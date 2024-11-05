@@ -1,0 +1,26 @@
+services:
+  rust-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/app
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/usr/src/app/target
+    privileged: true
+    command: [ "cargo", "run" ]
+
+  rust-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/app
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/usr/src/app/target
+    privileged: true
+    command: [ "cargo", "test" ]
+
+volumes:
+  cargo-cache:
+  target-cache:

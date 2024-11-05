@@ -71,6 +71,7 @@ async fn main() -> Result<(), InitProcessError> {
     let virtual_interface = Iface::new("tap0", Mode::Tap)
         .map_err(|e| InitProcessError::VirtualInterfaceError(e.to_string()))?;
     info!("仮想NICの作成に成功しました: {}", virtual_interface.name());
+    info!("デバック表示です。");
 
     setup_interface("tap0", format!("{}/{}", tun_ip, tun_mask).as_str()).await?;
 
@@ -203,4 +204,158 @@ where
 
         result
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::sync::broadcast;
+    use tokio::time::{sleep, Duration};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_task_state_new() {
+        let state = TaskState::new();
+        assert!(!state.polling_active);
+        assert!(!state.writer_active);
+        assert!(!state.analysis_active);
+    }
+
+    #[tokio::test]
+    async fn test_spawn_monitored_task_activation() {
+        let task_state = Arc::new(Mutex::new(TaskState::new()));
+        let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
+
+        // テスト用の非同期タスク
+        let handle = spawn_monitored_task(
+            "ポーリング",
+            task_state.clone(),
+            shutdown_rx,
+            || async {
+                sleep(Duration::from_millis(100)).await;
+                Ok(())
+            },
+        );
+
+        // タスクが開始されたことを確認
+        sleep(Duration::from_millis(50)).await;
+        {
+            let state = task_state.lock().await;
+            assert!(state.polling_active);
+        }
+
+        // タスクが正常に完了することを確認
+        let result = handle.await.unwrap();
+        assert!(result.is_ok());
+
+        // タスクが非アクティブになったことを確認
+        {
+            let state = task_state.lock().await;
+            assert!(!state.polling_active);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_spawn_monitored_task_shutdown() {
+        let task_state = Arc::new(Mutex::new(TaskState::new()));
+        let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
+
+        // 長時間実行されるタスクをスポーン
+        let handle = spawn_monitored_task(
+            "ライター",
+            task_state.clone(),
+            shutdown_rx,
+            || async {
+                loop {
+                    sleep(Duration::from_millis(100)).await;
+                }
+            },
+        );
+
+        // タスクがアクティブになったことを確認
+        sleep(Duration::from_millis(50)).await;
+        {
+            let state = task_state.lock().await;
+            assert!(state.writer_active);
+        }
+
+        // シャットダウン信号を送信
+        shutdown_tx.send(()).unwrap();
+
+        // タスクが正常に終了することを確認
+        let result = handle.await.unwrap();
+        assert!(result.is_ok());
+
+        // タスクが非アクティブになったことを確認
+        {
+            let state = task_state.lock().await;
+            assert!(!state.writer_active);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_spawn_monitored_task_error_handling() {
+        let task_state = Arc::new(Mutex::new(TaskState::new()));
+        let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
+
+        // エラーを返すタスク
+        let handle = spawn_monitored_task(
+            "分析",
+            task_state.clone(),
+            shutdown_rx,
+            || async {
+                Err("テストエラー".to_string())
+            },
+        );
+
+        // タスクが失敗することを確認
+        let result = handle.await.unwrap();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "テストエラー");
+
+        // タスクが非アクティブになったことを確認
+        {
+            let state = task_state.lock().await;
+            assert!(!state.analysis_active);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multiple_tasks() {
+        let task_state = Arc::new(Mutex::new(TaskState::new()));
+        let (shutdown_tx, _) = broadcast::channel(1);
+
+        let handles = vec![
+            spawn_monitored_task(
+                "ポーリング",
+                task_state.clone(),
+                shutdown_tx.subscribe(),
+                || async { Ok(()) },
+            ),
+            spawn_monitored_task(
+                "ライター",
+                task_state.clone(),
+                shutdown_tx.subscribe(),
+                || async { Ok(()) },
+            ),
+            spawn_monitored_task(
+                "分析",
+                task_state.clone(),
+                shutdown_tx.subscribe(),
+                || async { Ok(()) },
+            ),
+        ];
+
+        // すべてのタスクが完了するのを待つ
+        for handle in handles {
+            let result = handle.await.unwrap();
+            assert!(result.is_ok());
+        }
+
+        // すべてのタスクが非アクティブになったことを確認
+        let state = task_state.lock().await;
+        assert!(!state.polling_active);
+        assert!(!state.writer_active);
+        assert!(!state.analysis_active);
+    }
 }
