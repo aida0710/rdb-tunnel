@@ -1,5 +1,3 @@
-// types/inet_addr.rs
-
 use bytes::BytesMut;
 use postgres_types::{IsNull, ToSql, Type};
 use std::error::Error;
