@@ -1,64 +1,21 @@
 use crate::database::database::Database;
-use crate::database::error::DbError;
 use crate::database::execute_query::ExecuteQuery;
-use crate::db_write::MacAddr;
-use bytes::BytesMut;
+use crate::error::PacketError;
+use crate::types::{MacAddr, Packet};
 use log::{debug, error, info, trace};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface};
-use postgres_types::{FromSql, IsNull, ToSql, Type};
-use std::error::Error;
 use std::net::IpAddr;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::interval;
 
-#[derive(Debug)]
-pub enum PacketError {
-    NetworkError(String),
-    DatabaseError(DbError),
-    DeviceError(String),
-}
-
-impl std::fmt::Display for PacketError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PacketError::NetworkError(msg) => write!(f, "ネットワークエラー: {}", msg),
-            PacketError::DatabaseError(e) => write!(f, "データベースエラー: {}", e),
-            PacketError::DeviceError(msg) => write!(f, "デバイスエラー: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for PacketError {}
-
-impl From<DbError> for PacketError {
-    fn from(err: DbError) -> Self {
-        PacketError::DatabaseError(err)
-    }
-}
-
+// パケットリーダーの構造体
 #[derive(Clone)]
-pub struct PacketInfo {
-    pub src_mac: MacAddr,
-    pub dst_mac: MacAddr,
-    pub ether_type: i32,
-    pub src_ip: IpAddr,
-    pub dst_ip: IpAddr,
-    pub src_port: Option<i32>,
-    pub dst_port: Option<i32>,
-    pub ip_protocol: i32,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub data: Vec<u8>,
-    pub raw_packet: Vec<u8>,
-}
-
-#[derive(Clone)]
-pub struct PacketPoller {
-    last_timestamp: Arc<Mutex<Option<chrono::DateTime<chrono::Utc>>>>, // Changed from NaiveDateTime to DateTime<Utc>
+pub struct PacketReader {
+    last_timestamp: Arc<Mutex<Option<chrono::DateTime<chrono::Utc>>>>,
     is_first_poll: Arc<AtomicBool>,
     my_ip: IpAddr,
     interface: Arc<NetworkInterface>,
@@ -66,7 +23,7 @@ pub struct PacketPoller {
     packets_failed: Arc<AtomicU64>,
 }
 
-impl PacketPoller {
+impl PacketReader {
     pub fn new(my_ip: IpAddr, interface: NetworkInterface) -> Self {
         Self {
             last_timestamp: Arc::new(Mutex::new(None)),
@@ -90,7 +47,7 @@ impl PacketPoller {
     }
 
     // パケットを処理対象とするかどうかを判定
-    fn should_process_packet(&self, packet: &PacketInfo) -> bool {
+    fn should_process_packet(&self, packet: &Packet) -> bool {
         let is_tunnel_traffic = packet.src_ip.to_string().starts_with("192.168.0.") ||
             packet.dst_ip.to_string().starts_with("192.168.0."); // トンネルトラフィックの場合は処理
 
@@ -109,7 +66,7 @@ impl PacketPoller {
         is_for_me || is_broadcast || is_tunnel_traffic
     }
 
-    pub async fn poll_packets(&self) -> Result<Vec<PacketInfo>, PacketError> {
+    pub async fn poll_packets(&self) -> Result<Vec<Packet>, PacketError> {
         let db = Database::get_database();
         let mut last_ts = self.last_timestamp.lock().await;
         let is_first = self.is_first_poll.load(Ordering::SeqCst);
@@ -186,13 +143,13 @@ impl PacketPoller {
                 error!("データベースクエリエラー: {:?}", e);
                 debug!("エラー発生時のタイムスタンプを更新: {}", current_time);
                 *last_ts = Some(current_time);
-                return Err(PacketError::from(e));
+                return Err(PacketError::DatabaseError(e.to_string()));
             }
         };
 
         info!("{}行のデータを取得しました", rows.len());
 
-        let mut packet_infos: Vec<PacketInfo> = Vec::new();
+        let mut packets: Vec<Packet> = Vec::new();
         let mut latest_timestamp = None;
 
         for row in rows {
@@ -209,7 +166,7 @@ impl PacketPoller {
 
             debug!("Received MAC addresses - src: {}, dst: {}", src_mac, dst_mac);
 
-            let packet_info = PacketInfo {
+            let packet = Packet {
                 src_mac,
                 dst_mac,
                 ether_type: row.get("ether_type"),
@@ -223,28 +180,28 @@ impl PacketPoller {
                 raw_packet: row.get("raw_packet"),
             };
 
-            if self.should_process_packet(&packet_info) {
+            if self.should_process_packet(&packet) {
                 trace!("パケットを処理対象に追加: {} -> {}, MAC: {} -> {}",
-                    packet_info.src_ip,
-                    packet_info.dst_ip,
-                    packet_info.src_mac,
-                    packet_info.dst_mac
+                    packet.src_ip,
+                    packet.dst_ip,
+                    packet.src_mac,
+                    packet.dst_mac
                 );
-                packet_infos.push(packet_info);
+                packets.push(packet);
             }
         }
 
         let new_timestamp = latest_timestamp.unwrap_or(current_time);
         *last_ts = Some(new_timestamp);
         info!("タイムスタンプを更新: {}", new_timestamp);
-        debug!("取得したパケット数: {}", packet_infos.len());
+        debug!("取得したパケット数: {}", packets.len());
 
         if is_first {
             self.is_first_poll.store(false, Ordering::SeqCst);
             info!("初回ポーリング完了、フラグを更新しました");
         }
 
-        Ok(packet_infos)
+        Ok(packets)
     }
 
     pub async fn poll_and_send_packets(&self) -> Result<(), PacketError> {
@@ -326,7 +283,7 @@ pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketErro
 
     info!("パケット転送を開始します: {}", my_ip);
 
-    let poller = PacketPoller::new(my_ip, interface);
+    let poller = PacketReader::new(my_ip, interface);
     let mut interval = interval(Duration::from_millis(500));
 
     loop {
