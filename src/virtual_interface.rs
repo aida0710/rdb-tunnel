@@ -3,7 +3,7 @@ use futures::TryStreamExt;
 use ipnetwork::IpNetwork;
 use rtnetlink::new_connection;
 
-pub async fn setup_interface(name: &str, ip: &str) -> Result<(), InitProcessError> {
+pub async fn setup_interface(tap_interface_name: &str, ip: &str) -> Result<(), InitProcessError> {
     // IPアドレスのパース
     let ip_net: IpNetwork = ip.parse()
         .map_err(|e| InitProcessError::VirtualInterfaceError(format!("IPアドレスのパースに失敗: {}", e)))?;
@@ -15,7 +15,7 @@ pub async fn setup_interface(name: &str, ip: &str) -> Result<(), InitProcessErro
 
     // インターフェースIDの取得
     let interface = handle.link().get()
-        .match_name(name.to_string())
+        .match_name(tap_interface_name.to_string())
         .execute()
         .try_next()
         .await
