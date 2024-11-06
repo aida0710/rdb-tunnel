@@ -1,9 +1,25 @@
+use log::info;
 use pnet::datalink::{self, NetworkInterface};
 use std::io::{self, Write};
 
-pub fn select_device() -> Result<NetworkInterface, String> {
+pub fn select_device(docker_mode: bool, docker_interface_name: &str) -> Result<NetworkInterface, String> {
     let interfaces = datalink::interfaces();
 
+    if interfaces.is_empty() {
+        return Err("利用可能なネットワークインターフェースがありません".to_string());
+    }
+
+    // Dockerモードの場合はインターフェイスの自動選択
+    if docker_mode {
+        info!("Docker Modeが有効な為、{}インターフェイスで自動実行されます。", docker_interface_name);
+        return if let Some(interface) = interfaces.iter().find(|interface| interface.name == docker_interface_name) {
+            Ok(interface.clone())
+        } else {
+            Err(format!("指定されたDocker使用時のインターフェース{}が見つかりません", docker_interface_name))
+        };
+    }
+
+    // 通常モードの場合は対話的に選択
     println!("\n利用可能なネットワークインターフェース:");
     for (idx, interface) in interfaces.iter().enumerate() {
         println!("{}. {} ({})",
