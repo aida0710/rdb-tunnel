@@ -1,4 +1,5 @@
-use crate::db_write::rdb_tunnel_packet_write;
+use crate::error::{InitProcessError, PacketAnalysisError};
+use crate::packet_writer::rdb_tunnel_packet_write;
 use log::{debug, error, info};
 use pnet::datalink;
 use pnet::datalink::Channel::Ethernet;
@@ -6,25 +7,6 @@ use pnet::datalink::NetworkInterface;
 use std::io;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use crate::error::InitProcessError;
-
-#[derive(Error, Debug)]
-pub enum PacketAnalysisError {
-    #[error("ネットワークエラー: {0}")]
-    NetworkError(String),
-
-    #[error("IOエラー: {0}")]
-    IoError(#[from] io::Error),
-
-    #[error("インターフェースエラー: {0}")]
-    InterfaceError(String),
-}
-
-impl From<PacketAnalysisError> for InitProcessError {
-    fn from(err: PacketAnalysisError) -> Self {
-        InitProcessError::PacketAnalysisError(err.to_string())
-    }
-}
 
 async fn handle_interface(interface: NetworkInterface) -> Result<(), PacketAnalysisError> {
     let (_, mut rx) = match datalink::channel(&interface, Default::default()) {
@@ -59,7 +41,7 @@ pub async fn packet_analysis(interface: NetworkInterface) -> Result<(), PacketAn
     let interfaces = datalink::interfaces();
     let tap0_interface = interfaces
         .into_iter()
-        .find(|iface| iface.name == "tap0")
+        .find(|interface| interface.name == "tap0")
         .ok_or_else(|| PacketAnalysisError::InterfaceError(
             "tap0 インターフェースが見つかりません".to_string()
         ))?;
@@ -98,11 +80,11 @@ pub fn check_interfaces() -> Result<(), PacketAnalysisError> {
     let interfaces = datalink::interfaces();
 
     println!("利用可能なインターフェース:");
-    for iface in interfaces.iter() {
-        println!("- {}: {}", iface.name, if iface.is_up() { "UP" } else { "DOWN" });
+    for interface in interfaces.iter() {
+        println!("- {}: {}", interface.name, if interface.is_up() { "UP" } else { "DOWN" });
     }
 
-    if !interfaces.iter().any(|iface| iface.name == "tap0") {
+    if !interfaces.iter().any(|interface| interface.name == "tap0") {
         return Err(PacketAnalysisError::InterfaceError(
             "tap0インターフェースが見つかりません".to_string()
         ));
