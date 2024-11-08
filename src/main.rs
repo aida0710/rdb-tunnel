@@ -1,21 +1,17 @@
-mod select_device;
 mod database;
 mod error;
 mod packet_header;
-mod virtual_interface;
-mod setup_logger;
 mod packet_analysis;
 mod config;
 mod tasks;
 mod packet;
+mod interface;
 
-use crate::config::AppConfig;
+use crate::config::{setup_logger, AppConfig};
 use crate::database::Database;
 use crate::error::InitProcessError;
-use crate::select_device::select_device;
-use crate::setup_logger::setup_logger;
+use crate::interface::{select_interface, setup_interface};
 use crate::tasks::TaskScheduler;
-use crate::virtual_interface::setup_interface;
 use log::{error, info};
 use tun_tap::{Iface, Mode};
 
@@ -25,7 +21,7 @@ async fn main() -> Result<(), InitProcessError> {
     setup_logger().map_err(|e| InitProcessError::LoggerError(e.to_string()))?;
 
     // 設定の読み込み
-    let config: AppConfig = AppConfig::new()?;
+    let config: AppConfig = AppConfig::new().map_err(|e| InitProcessError::ConfigurationError(e.to_string()))?;
 
     // データベース接続
     Database::connect(
@@ -40,23 +36,23 @@ async fn main() -> Result<(), InitProcessError> {
 
     // 仮想インターフェースのセットアップ
     let virtual_interface = Iface::new(&config.network.tap_interface_name, Mode::Tap)
-        .map_err(|e| InitProcessError::VirtualInterfaceError(e.to_string()))?;
+        .map_err(|e| InitProcessError::VirtualInterfaceCreateError(e.to_string()))?;
     info!("仮想NICの作成に成功しました: {}", virtual_interface.name());
 
     setup_interface(
         &config.network.tap_interface_name,
         &format!("{}/{}", config.network.tap_ip, config.network.tap_mask),
-    ).await?;
+    ).await.map_err(|e| InitProcessError::VirtualInterfaceSetupError(e.to_string()))?;
 
     // ネットワークインターフェースの選択
-    let interface = select_device(config.network.docker_mode, &config.network.docker_interface_name)
-        .map_err(|e| InitProcessError::DeviceSelectionError(e.to_string()))?;
+    let interface = select_interface(config.network.docker_mode, &config.network.docker_interface_name)
+        .map_err(|e| InitProcessError::InterfaceSelectionError(e.to_string()))?;
     info!("デバイスの選択に成功しました: {}", interface.name);
 
     // タスクスケジューラの起動
     let scheduler = TaskScheduler::new(interface);
-    if let Err(e) = scheduler.run().await {
-        error!("タスクスケジューラでエラーが発生: {}", e);
+    if let Err(e) = scheduler.run().await.map_err(|e| InitProcessError::TaskExecutionProcessError(e.to_string())) {
+        error!("タスクの実行処理に失敗しました: {:?}", e);
         std::process::exit(1);
     }
 
