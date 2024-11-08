@@ -1,20 +1,16 @@
 mod select_device;
 mod database;
 mod error;
-mod packet_reader;
 mod packet_header;
-mod packet_writer;
-mod firewall;
-mod firewall_packet;
 mod virtual_interface;
 mod setup_logger;
 mod packet_analysis;
-mod types;
 mod config;
 mod tasks;
+mod packet;
 
 use crate::config::AppConfig;
-use crate::database::database::Database;
+use crate::database::Database;
 use crate::error::InitProcessError;
 use crate::select_device::select_device;
 use crate::setup_logger::setup_logger;
@@ -59,7 +55,7 @@ async fn main() -> Result<(), InitProcessError> {
 
     // タスクスケジューラの起動
     let scheduler = TaskScheduler::new(interface);
-    if let Err(|e| InitProcessError::TaskExecutionProcessError(e)) = scheduler.run().await {
+    if let Err(e) = scheduler.run().await {
         error!("タスクスケジューラでエラーが発生: {}", e);
         std::process::exit(1);
     }
