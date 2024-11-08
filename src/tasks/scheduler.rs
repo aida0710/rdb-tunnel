@@ -11,7 +11,6 @@ use tokio::sync::{broadcast, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 use crate::packet::analysis::PacketAnalyzer;
-use crate::packet_analysis::packet_analysis;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1000);
 
