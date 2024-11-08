@@ -1,10 +1,10 @@
 use super::task_state::TaskState;
+use crate::tasks::error::TaskError;
 use log::{debug, error, info};
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
-use crate::tasks::error::TaskError;
 
 const SHUTDOWN_CHECK_INTERVAL: Duration = Duration::from_millis(100);
 

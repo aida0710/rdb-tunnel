@@ -1,16 +1,17 @@
 use super::TaskState;
 use crate::error::InitProcessError;
-use crate::packet_analysis::packet_analysis;
-use crate::packet_reader::inject_packet;
-use crate::packet_writer::start_packet_writer;
+use crate::packet::reader::inject_packet;
+use crate::packet::writer::PacketWriter;
+use crate::tasks::error::TaskError;
 use crate::tasks::task_monitor::TaskMonitor;
-use log::{error, info};
+use log::info;
 use pnet::datalink::NetworkInterface;
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tokio::task::JoinHandle;
-use tokio::time::Duration;
-use crate::tasks::error::TaskError;
+use tokio::time::{interval, Duration};
+use crate::packet::analysis::PacketAnalyzer;
+use crate::packet_analysis::packet_analysis;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1000);
 
@@ -60,7 +61,7 @@ impl TaskScheduler {
                     result.map_err(|e| e.to_string())
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("ポーリングタスクをシャットダウンしています...");
+                    info!("Packet　Polling Taskを停止しています。");
                     Ok(())
                 }
             }
@@ -69,14 +70,15 @@ impl TaskScheduler {
 
     fn spawn_writer_task(&self) -> JoinHandle<Result<(), String>> {
         let mut shutdown_rx = self.shutdown_tx.subscribe();
+        let writer = PacketWriter::default();
 
         tokio::spawn(async move {
             tokio::select! {
-                _ = start_packet_writer() => {
+                _ = writer.start() => {
                     Ok(())
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("ライタータスクをシャットダウンしています...");
+                    info!("Packet Writer Taskを停止しています。");
                     Ok(())
                 }
             }
@@ -89,11 +91,11 @@ impl TaskScheduler {
 
         tokio::spawn(async move {
             tokio::select! {
-                result = packet_analysis(interface) => {
+                result = PacketAnalyzer::analyze(interface) => {
                     result.map_err(|e| e.to_string())
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("分析タスクをシャットダウンしています...");
+                    info!("Analysis Taskを停止しています。");
                     Ok(())
                 }
             }

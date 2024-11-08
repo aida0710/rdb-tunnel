@@ -10,7 +10,7 @@ pub enum TaskError {
 
     #[error("タスクのシャットダウンに失敗: {0}")]
     TaskShutdownError(String),
-    
+
     #[error("タスクの初期化に失敗: {0}")]
     InitializationError(String),
 
