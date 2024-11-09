@@ -43,5 +43,5 @@ fn extract_mac_addresses(frame: &[u8]) -> (MacAddr, MacAddr) {
 
 fn parse_ether_type(frame: &[u8]) -> EtherType {
     let type_value = u16::from_be_bytes([frame[12], frame[13]]);
-    EtherType(type_value)
+    EtherType::from(type_value)
 }
