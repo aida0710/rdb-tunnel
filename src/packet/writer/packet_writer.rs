@@ -1,11 +1,9 @@
-use crate::database::DbError;
 use crate::packet::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::repository::PacketRepository;
 use crate::packet::writer::error::WriterError;
 use crate::packet::writer::PacketBuffer;
 use lazy_static::lazy_static;
 use log::{debug, error, info, trace};
-use std::net::IpAddr;
 use tokio::time::{interval, Duration};
 use crate::packet::analysis::PacketAnalyzer;
 
