@@ -1,7 +1,7 @@
-use log::{error, info};
-use pnet::datalink::NetworkInterface;
 use crate::packet::monitor::error::MonitorError;
 use crate::packet::monitor::interface_handler::InterfaceHandler;
+use log::info;
+use pnet::datalink::NetworkInterface;
 
 pub struct NetworkMonitor;
 
