@@ -1,4 +1,5 @@
-use super::{InetAddr, MacAddr, Protocol};
+use super::{InetAddr, MacAddr};
+use crate::packet::types::protocol::{EtherType, IpProtocol};
 use chrono::{DateTime, Utc};
 use std::net::IpAddr;
 
@@ -6,12 +7,12 @@ use std::net::IpAddr;
 pub struct PacketData {
     pub src_mac: MacAddr,
     pub dst_mac: MacAddr,
-    pub ether_type: Protocol,
+    pub ether_type: EtherType,
     pub src_ip: InetAddr,
     pub dst_ip: InetAddr,
     pub src_port: i32,
     pub dst_port: i32,
-    pub ip_protocol: Protocol,
+    pub ip_protocol: IpProtocol,
     pub timestamp: DateTime<Utc>,
     pub data: Vec<u8>,
     pub raw_packet: Vec<u8>,
@@ -55,12 +56,12 @@ impl Packet {
         PacketData {
             src_mac: self.src_mac.clone(),
             dst_mac: self.dst_mac.clone(),
-            ether_type: Protocol::from_u16(self.ether_type as u16),
+            ether_type: EtherType::from(self.ether_type),
             src_ip: InetAddr(self.src_ip),
             dst_ip: InetAddr(self.dst_ip),
             src_port: self.src_port.unwrap_or(0),
             dst_port: self.dst_port.unwrap_or(0),
-            ip_protocol: Protocol::from_u16(self.ip_protocol as u16),
+            ip_protocol: IpProtocol::from(self.ip_protocol),
             timestamp: self.timestamp,
             data: self.data.clone(),
             raw_packet: self.raw_packet.clone(),
