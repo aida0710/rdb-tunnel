@@ -1,11 +1,12 @@
 use crate::interface::error::InterfaceError;
 use futures::TryStreamExt;
-use ipnetwork::IpNetwork;
+use ipnetwork::{IpNetwork, IpNetworkError};  // IpNetworkError を追加
 use rtnetlink::new_connection;
 
 pub async fn setup_interface(tap_interface_name: &str, ip: &str) -> Result<(), InterfaceError> {
     // IPアドレスのパース
-    let ip_net: IpNetwork = ip.parse().map_err(|e| InterfaceError::PurseIpAddressError(e))?;
+    let ip_net: IpNetwork = ip.parse()
+        .map_err(|e: IpNetworkError| InterfaceError::PurseIpAddressError(e.to_string()))?;
 
     // netlinkコネクションの作成
     let (connection, handle, _) =
