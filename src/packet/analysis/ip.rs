@@ -1,6 +1,6 @@
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use rtnetlink::IpVersion;
 use crate::packet::types::IpProtocol;
+use rtnetlink::IpVersion;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[derive(Debug)]
 pub struct IpHeader {

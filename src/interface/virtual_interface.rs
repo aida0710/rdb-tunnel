@@ -1,6 +1,6 @@
 use crate::interface::error::InterfaceError;
 use futures::TryStreamExt;
-use ipnetwork::{IpNetwork, IpNetworkError};  // IpNetworkError を追加
+use ipnetwork::{IpNetwork, IpNetworkError};
 use rtnetlink::new_connection;
 
 pub async fn setup_interface(tap_interface_name: &str, ip: &str) -> Result<(), InterfaceError> {
