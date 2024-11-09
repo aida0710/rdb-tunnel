@@ -35,7 +35,7 @@ impl IpFirewall {
                     // L3 Filters
                     Filter::SrcIpAddress(ip) => &packet.src_ip == ip,
                     Filter::DstIpAddress(ip) => &packet.dst_ip == ip,
-                    Filter::IPProtocol(protocol) => packet.ip_protocol == *protocol,
+                    Filter::IpProtocol(protocol) => packet.ip_protocol == *protocol,
 
                     // L4 Filters
                     Filter::SrcPort(port) => packet.src_port == *port,

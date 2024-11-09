@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
-use crate::packet::analysis::PacketAnalyzer;
+use crate::packet::monitor::NetworkMonitor;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1000);
 
@@ -90,7 +90,7 @@ impl TaskScheduler {
 
         tokio::spawn(async move {
             tokio::select! {
-                result = PacketAnalyzer::analyze(interface) => {
+                result = NetworkMonitor::start_monitoring(interface) => {
                     result.map_err(|e| e.to_string())
                 }
                 _ = shutdown_rx.recv() => {

@@ -11,7 +11,7 @@ pub enum Filter {
     // L3 Filters
     SrcIpAddress(IpAddr),
     DstIpAddress(IpAddr),
-    IPProtocol(u8),
+    IpProtocol(u8),
 
     // L4 Filters
     SrcPort(u16),
