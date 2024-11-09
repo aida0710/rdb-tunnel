@@ -1,7 +1,6 @@
 mod packet_writer;
-mod packet_analyzer;
 mod packet_buffer;
+mod error;
 
-pub(crate) use packet_analyzer::PacketAnalyzer;
-pub(crate) use packet_buffer::PacketBuffer;
+pub use packet_buffer::PacketBuffer;
 pub use packet_writer::PacketWriter;

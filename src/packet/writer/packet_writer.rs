@@ -1,11 +1,13 @@
 use crate::database::DbError;
 use crate::packet::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::repository::PacketRepository;
-use crate::packet::writer::{PacketAnalyzer, PacketBuffer};
+use crate::packet::writer::error::WriterError;
+use crate::packet::writer::PacketBuffer;
 use lazy_static::lazy_static;
 use log::{debug, error, info, trace};
 use std::net::IpAddr;
 use tokio::time::{interval, Duration};
+use crate::packet::analysis::PacketAnalyzer;
 
 const FLUSH_INTERVAL: Duration = Duration::from_millis(100);
 
@@ -13,8 +15,10 @@ lazy_static! {
     static ref FIREWALL: IpFirewall = {
         let mut fw = IpFirewall::new(Policy::Blacklist);
         fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
-        fw.add_rule(Filter::DstPort(13432), 90);
-        fw.add_rule(Filter::DstPort(2222), 80);
+        fw.add_rule(Filter::DstPort(13432), 95);
+        fw.add_rule(Filter::SrcPort(13432), 90);
+        fw.add_rule(Filter::DstPort(2222), 85);
+        fw.add_rule(Filter::SrcPort(2222), 80);
         fw
     };
 }
@@ -45,7 +49,7 @@ impl PacketWriter {
         }
     }
 
-    async fn flush_buffer(&self) -> Result<(), DbError> {
+    async fn flush_buffer(&self) -> Result<(), WriterError> {
         let packets = self.buffer.drain().await;
         if packets.is_empty() {
             return Ok(());
@@ -58,20 +62,17 @@ impl PacketWriter {
                 debug!("フラッシュ完了: 処理時間 {}ms", duration.as_millis());
                 Ok(())
             }
-            Err(e) => {
-                error!("パケットバッファのフラッシュに失敗しました: {}", e);
-                Err(e)
-            }
+            Err(e) => Err(WriterError::PacketBufferFlushError(e.to_string())),
         }
     }
 
-    pub async fn process_packet(&self, ethernet_packet: &[u8]) -> Result<(), DbError> {
-        if ethernet_packet.len() < 14 {
-            error!("無効なイーサネットパケット長");
+    pub async fn process_packet(&self, ethernet_frame: &[u8]) -> Result<(), WriterError> {
+        if ethernet_frame.len() < 14 {
+            trace!("パケット長が14bit未満のEthernetFrameが検出されました");
             return Ok(());
         }
 
-        match PacketAnalyzer::analyze_packet(ethernet_packet).await {
+        match PacketAnalyzer::analyze_packet(ethernet_frame).await {
             Ok(packet_data) => {
                 let packet = packet_data.to_packet();
                 let firewall_packet = FirewallPacket::from_packet(&packet);
@@ -89,10 +90,7 @@ impl PacketWriter {
                 }
                 Ok(())
             }
-            Err(e) => {
-                error!("パケット解析エラー: {}", e);
-                Err(e)
-            }
+            Err(e) => Err(WriterError::PacketParsingError(e.to_string())),
         }
     }
 }
