@@ -41,8 +41,6 @@ impl PacketAnalyzer {
             }
         };
 
-        //println!("ether_type: {:?}", ethernet_header.ether_type);
-
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
@@ -86,32 +84,35 @@ impl PacketAnalyzer {
         let mut payload_offset = 14usize;
         let mut ip_protocol = IpProtocol::UNKNOWN;
 
+        // Ethernetヘッダー以降のデータを取得
+        let ip_data = &ethernet_frame[14..];
+
         match ether_type {
             EtherType::IP_V4 | EtherType::IP_V6 => {
-                if let Some(ip_header) = parse_ip_header(ethernet_frame).await {
-                    match parse_transport_header(ethernet_frame) {
-                        Some((transport_header, _)) => {
-                            src_ip = ip_header.src_ip;
-                            dst_ip = ip_header.dst_ip;
-                            ip_protocol = ip_header.ip_protocol;
-                            src_port = transport_header.src_port;
-                            dst_port = transport_header.dst_port;
-                            payload_offset = ip_header.header_length;
-                        }
-                        None => {
-                            error!("トランスポートヘッダーの解析に失敗しました");
-                        }
+                if let Some(ip_header) = parse_ip_header(ip_data).await {
+                    src_ip = ip_header.src_ip;
+                    dst_ip = ip_header.dst_ip;
+                    ip_protocol = ip_header.ip_protocol;
+                    payload_offset = 14 + ip_header.header_length;
+
+                    if let Some((transport_header, _)) = parse_transport_header(ip_data) {
+                        src_port = transport_header.src_port;
+                        dst_port = transport_header.dst_port;
                     }
                 }
             }
             EtherType::ARP => {
-                if ethernet_frame.len() >= 28 {
-                    src_ip = IpAddr::V4(Ipv4Addr::new(ethernet_frame[28], ethernet_frame[29], ethernet_frame[30], ethernet_frame[31]));
-                    dst_ip = IpAddr::V4(Ipv4Addr::new(ethernet_frame[38], ethernet_frame[39], ethernet_frame[40], ethernet_frame[41]));
+                if ethernet_frame.len() >= 42 { // ARPパケットの最小長
+                    src_ip = IpAddr::V4(Ipv4Addr::new(
+                        ethernet_frame[28], ethernet_frame[29],
+                        ethernet_frame[30], ethernet_frame[31],
+                    ));
+                    dst_ip = IpAddr::V4(Ipv4Addr::new(
+                        ethernet_frame[38], ethernet_frame[39],
+                        ethernet_frame[40], ethernet_frame[41],
+                    ));
                 }
             }
-            EtherType::RARP => {}
-            EtherType::VLAN => {}
             _ => {}
         }
 

@@ -15,20 +15,34 @@ pub async fn parse_ip_header(data: &[u8]) -> Option<IpHeader> {
     let version = (data[0] >> 4) & 0xF;
     match version {
         4 => {
-            let ip_protocol_v4 = IpProtocol::from((data[0] & 0xF) << 4);
+            if data.len() < 20 { // 最小IPv4ヘッダ長
+                return None;
+            }
+
+            let ihl = (data[0] & 0xF) as usize * 4; // IPヘッダ長
+            if data.len() < ihl {
+                return None;
+            }
+
+            let ip_protocol = IpProtocol::from(data[9]); // プロトコルフィールド
             let src_ip = Ipv4Addr::new(data[12], data[13], data[14], data[15]);
             let dst_ip = Ipv4Addr::new(data[16], data[17], data[18], data[19]);
 
             Some(IpHeader {
                 version: IpVersion::V4,
-                ip_protocol: ip_protocol_v4,
+                ip_protocol,
                 src_ip: IpAddr::V4(src_ip),
                 dst_ip: IpAddr::V4(dst_ip),
-                header_length: data.len(),
+                header_length: ihl,
             })
         }
         6 => {
-            let ip_protocol_v6 = IpProtocol::from(data[6]);
+            // IPv6ヘッダは40バイト固定
+            if data.len() < 40 {
+                return None;
+            }
+
+            let ip_protocol = IpProtocol::from(data[6]); // Next Header
             let src_ip = Ipv6Addr::new(
                 u16::from_be_bytes([data[8], data[9]]),
                 u16::from_be_bytes([data[10], data[11]]),
@@ -52,10 +66,10 @@ pub async fn parse_ip_header(data: &[u8]) -> Option<IpHeader> {
 
             Some(IpHeader {
                 version: IpVersion::V6,
-                ip_protocol: ip_protocol_v6,
+                ip_protocol,
                 src_ip: IpAddr::V6(src_ip),
                 dst_ip: IpAddr::V6(dst_ip),
-                header_length: data.len(),
+                header_length: 40,
             })
         }
         _ => None,
