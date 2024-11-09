@@ -1,5 +1,5 @@
 use bytes::BytesMut;
-use postgres_types::{FromSql, IsNull, ToSql, Type};
+use postgres_types::{IsNull, ToSql, Type};
 use std::error::Error;
 
 /// IPプロトコル番号 (IANA)
@@ -24,6 +24,10 @@ impl IpProtocol {
         self.0
     }
 
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
+    }
+
     /// TCPまたはUDPかどうかを判定
     pub fn is_transport_protocol(&self) -> bool {
         matches!(self.0, 6 | 17)  // TCP or UDP
@@ -41,28 +45,17 @@ impl From<u8> for IpProtocol {
     }
 }
 
-impl<'a> FromSql<'a> for IpProtocol {
-    fn from_sql(_ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
-        let value = i8::from_sql(_ty, raw)?;
-        Ok(IpProtocol(value as u8))
-    }
-
-    fn accepts(ty: &Type) -> bool {
-        <i8 as FromSql>::accepts(ty)
-    }
-}
-
 impl ToSql for IpProtocol {
     fn to_sql(
         &self,
         _ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        (self.0 as i8).to_sql(_ty, out)
+        (self.0 as i32).to_sql(_ty, out)
     }
 
     fn accepts(ty: &Type) -> bool {
-        <i8 as ToSql>::accepts(ty)
+        <i32 as ToSql>::accepts(ty)
     }
 
     fn to_sql_checked(
