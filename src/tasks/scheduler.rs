@@ -1,5 +1,5 @@
 use super::TaskState;
-use crate::error::InitProcessError;
+use crate::packet::monitor::NetworkMonitor;
 use crate::packet::reader::inject_packet;
 use crate::packet::writer::PacketWriter;
 use crate::tasks::error::TaskError;
@@ -9,8 +9,7 @@ use pnet::datalink::NetworkInterface;
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tokio::task::JoinHandle;
-use tokio::time::{interval, Duration};
-use crate::packet::monitor::NetworkMonitor;
+use tokio::time::Duration;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1000);
 
