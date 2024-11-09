@@ -24,23 +24,23 @@ impl InterfaceHandler {
         info!("インターフェース {} でパケット受信を開始", self.interface.name);
         let writer = Arc::new(PacketWriter::default());
 
-        // パケット処理用のチャネルを作成
-        let (packet_tx, mut packet_rx) = mpsc::channel(1000);
+        // パケット処理用のチャネルを作成 (Vec<u8>型を使用)
+        let (packet_tx, mut packet_rx) = mpsc::channel::<Vec<u8>>(1000);
 
         // パケット受信用のタスクを起動
         let receive_handle = tokio::spawn(async move {
             loop {
+                // Result型を直接マッチ
                 match rx.next() {
-                    Some(Ok(ethernet_frame)) => {
+                    Ok(ethernet_frame) => {
                         if packet_tx.send(ethernet_frame.to_vec()).await.is_err() {
                             break;
                         }
                     }
-                    Some(Err(e)) => {
+                    Err(e) => {
                         error!("パケット読み取りエラー: {}", e);
                         break;
                     }
-                    None => break,
                 }
             }
             Ok::<(), MonitorError>(())
