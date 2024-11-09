@@ -5,7 +5,7 @@ use crate::packet::analysis::transport::parse_transport_header;
 use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, MacAddr, PacketData};
 use chrono::Utc;
-use log::error;
+use log::{error, info};
 use std::net::{IpAddr, Ipv4Addr};
 
 #[derive(Clone, Copy)]
@@ -41,19 +41,33 @@ impl PacketAnalyzer {
             }
         };
 
-        println!("ether_type: {:?}", ethernet_header.ether_type);
+        //println!("ether_type: {:?}", ethernet_header.ether_type);
 
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
-        Ok(PacketData {
-            src_mac,
-            dst_mac,
-            ether_type,
+        info!("{:?}", PacketData {
+            src_mac: ethernet_header.src_mac.clone(),
+            dst_mac: ethernet_header.dst_mac.clone(),
+            ether_type: ethernet_header.ether_type,
             src_ip: InetAddr(src_ip),
             dst_ip: InetAddr(dst_ip),
-            src_port,
-            dst_port,
+            src_port: src_port as i32,
+            dst_port: dst_port as i32,
+            ip_protocol,
+            timestamp: Utc::now(),
+            data: ethernet_frame[payload_offset..].to_vec(),
+            raw_packet: ethernet_frame.to_vec(),
+        });
+
+        Ok(PacketData {
+            src_mac: ethernet_header.src_mac,
+            dst_mac: ethernet_header.dst_mac,
+            ether_type: ethernet_header.ether_type,
+            src_ip: InetAddr(src_ip),
+            dst_ip: InetAddr(dst_ip),
+            src_port: src_port as i32,
+            dst_port: dst_port as i32,
             ip_protocol,
             timestamp: Utc::now(),
             data: ethernet_frame[payload_offset..].to_vec(),
@@ -74,14 +88,20 @@ impl PacketAnalyzer {
 
         match ether_type {
             EtherType::IP_V4 | EtherType::IP_V6 => {
-                if let Some((ip_header)) = parse_ip_header(ethernet_frame).await {
-                    let Some((transport_header, _remaining_frame)) = parse_transport_header(ethernet_frame);
-                    src_ip = ip_header.src_ip;
-                    dst_ip = ip_header.dst_ip;
-                    ip_protocol = ip_header.ip_protocol;
-                    src_port = transport_header.src_port;
-                    dst_port = transport_header.dst_port;
-                    payload_offset = ip_header.header_length;
+                if let Some(ip_header) = parse_ip_header(ethernet_frame).await {
+                    match parse_transport_header(ethernet_frame) {
+                        Some((transport_header, _)) => {
+                            src_ip = ip_header.src_ip;
+                            dst_ip = ip_header.dst_ip;
+                            ip_protocol = ip_header.ip_protocol;
+                            src_port = transport_header.src_port;
+                            dst_port = transport_header.dst_port;
+                            payload_offset = ip_header.header_length;
+                        }
+                        None => {
+                            error!("トランスポートヘッダーの解析に失敗しました");
+                        }
+                    }
                 }
             }
             EtherType::ARP => {
