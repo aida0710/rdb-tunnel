@@ -9,12 +9,6 @@ pub enum MonitorError {
     #[error("未対応のチャンネルタイプです")]
     UnsupportedChannelType,
 
-    #[error("パケットの処理に失敗しました: {0}")]
-    PacketParseError(String),
-
-    #[error("パケットの読み取りに失敗しました: {0}")]
-    PacketReadError(String),
-
     #[error("無効なパケットサイズです")]
     InvalidPacketSize,
 
