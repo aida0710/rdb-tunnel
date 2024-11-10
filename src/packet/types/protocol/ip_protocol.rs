@@ -63,6 +63,6 @@ impl ToSql for IpProtocol {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        (self.0 as i8).to_sql_checked(ty, out)
+        (self.0 as i32).to_sql_checked(ty, out)
     }
 }
