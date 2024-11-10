@@ -47,7 +47,7 @@ impl AppConfig {
                 docker_interface_name: dotenv::var("DOCKER_INTERFACE_NAME").map_err(|e| ConfigError::EnvVarError(e.to_string()))?,
             },
             idps: IDPSConfig {
-                enabled: dotenv::var("IDPS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                enabled: dotenv::var("IDS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
                 rules: DetectionRules {
                     ip_header: vec![
                         IPHeaderViolation::UnknownProtocol,
@@ -95,8 +95,8 @@ impl AppConfig {
                         FTPViolation::ImproperPort,
                     ],
                 },
-                log_violations: dotenv::var("IDPS_LOG").map(|v| v.to_lowercase() == "true").unwrap_or(false),
-                block_violations: dotenv::var("IDPS_BLOCK").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                log_violations: dotenv::var("IDS_LOG").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                block_violations: dotenv::var("IPS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
             }
 
         })
