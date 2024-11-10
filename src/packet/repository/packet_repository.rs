@@ -1,4 +1,4 @@
-use crate::database::{Database, DbError, ExecuteQuery};
+use crate::database::{Database, DatabaseError, ExecuteQuery};
 use crate::packet::types::PacketData;
 use crate::packet::Packet;
 use chrono::{DateTime, Utc};
@@ -12,7 +12,7 @@ pub struct PacketRepository;
 impl PacketRepository {
     const CHUNK_SIZE: usize = 1000;
 
-    pub async fn bulk_insert(packets: Vec<PacketData>) -> Result<(), DbError> {
+    pub async fn bulk_insert(packets: Vec<PacketData>) -> Result<(), DatabaseError> {
         if packets.is_empty() {
             return Ok(());
         }
@@ -82,7 +82,7 @@ impl PacketRepository {
         is_first: bool,
         last_timestamp: Option<&DateTime<Utc>>,
         max_packet_size: i64,
-    ) -> Result<Vec<Packet>, DbError> {
+    ) -> Result<Vec<Packet>, DatabaseError> {
         let db = Database::get_database();
 
         let (query, params): (_, Vec<&(dyn ToSql + Sync)>) = if is_first {
