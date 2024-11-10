@@ -65,10 +65,7 @@ impl AppConfig {
                         IPOptionViolation::Timestamp,
                     ],
                     fragment: vec![
-                        FragmentViolation::FragmentStorm,
                         FragmentViolation::LargeOffset,
-                        FragmentViolation::TooManyFragments,
-                        FragmentViolation::Teardrop,
                         FragmentViolation::SameOffset,
                         FragmentViolation::InvalidFragment,
                     ],
