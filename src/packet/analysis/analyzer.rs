@@ -1,10 +1,12 @@
 use crate::packet::analysis::error::PacketAnalysisError;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
+use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
 use crate::packet::analysis::transport::parse_transport_header;
 use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, MacAddr, PacketData};
 use chrono::Utc;
+use lazy_static::lazy_static;
 use log::{error, trace};
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -14,6 +16,18 @@ pub struct IpHeader {
     pub protocol: u8,
     pub src_ip: IpAddr,
     pub dst_ip: IpAddr,
+}
+
+lazy_static! {
+    static ref FIREWALL: IpFirewall = {
+        let mut fw = IpFirewall::new(Policy::Blacklist);
+        fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
+        fw.add_rule(Filter::DstPort(5432), 95);
+        fw.add_rule(Filter::SrcPort(5432), 90);
+        fw.add_rule(Filter::DstPort(2222), 85);
+        fw.add_rule(Filter::SrcPort(2222), 80);
+        fw
+    };
 }
 
 pub struct PacketAnalyzer;
@@ -44,21 +58,7 @@ impl PacketAnalyzer {
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
-        trace!("{:?}", PacketData {
-            src_mac: ethernet_header.src_mac.clone(),
-            dst_mac: ethernet_header.dst_mac.clone(),
-            ether_type: ethernet_header.ether_type,
-            src_ip: InetAddr(src_ip),
-            dst_ip: InetAddr(dst_ip),
-            src_port: src_port as i32,
-            dst_port: dst_port as i32,
-            ip_protocol,
-            timestamp: Utc::now(),
-            data: ethernet_frame[payload_offset..].to_vec(),
-            raw_packet: ethernet_frame.to_vec(),
-        });
-
-        Ok(PacketData {
+        let mut packet_data = PacketData {
             src_mac: ethernet_header.src_mac,
             dst_mac: ethernet_header.dst_mac,
             ether_type: ethernet_header.ether_type,
@@ -70,7 +70,25 @@ impl PacketAnalyzer {
             timestamp: Utc::now(),
             data: ethernet_frame[payload_offset..].to_vec(),
             raw_packet: ethernet_frame.to_vec(),
-        })
+            buffer_push: true,
+        };
+
+        let firewall_packet = FirewallPacket::from_packet(&packet_data.to_packet());
+
+        if FIREWALL.check(&firewall_packet) {
+            trace!("許可：firewall_packet: {}:{} -> {}:{}",
+                firewall_packet.src_ip, firewall_packet.src_port,
+                firewall_packet.dst_ip, firewall_packet.dst_port
+            );
+        } else {
+            packet_data.buffer_push = false;
+            trace!("Firewallによりバッファ追加が禁止: {}:{} -> {}:{}",
+                firewall_packet.src_ip, firewall_packet.src_port,
+                firewall_packet.dst_ip, firewall_packet.dst_port
+            );
+        }
+
+        Ok(packet_data)
     }
 
     async fn parse_ip_packet(
@@ -132,6 +150,7 @@ impl PacketAnalyzer {
             timestamp: Utc::now(),
             data: Vec::new(),
             raw_packet: raw_packet.to_vec(),
+            buffer_push: false,
         }
     }
 }
