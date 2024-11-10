@@ -1,27 +1,28 @@
-use crate::database::error::DbError;
+use crate::database::error::DatabaseError;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tokio_postgres::NoTls;
 
-pub(crate) static DATABASE_POOL: OnceLock<DbPool> = OnceLock::new();
+pub(crate) static DATABASE_POOL: OnceLock<DatabasePool> = OnceLock::new();
 
-pub struct DbPool {
+#[derive(Debug)]
+pub struct DatabasePool {
     pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
-impl DbPool {
-    pub async fn new(connection_string: &str) -> Result<Self, DbError> {
-        let manager = PostgresConnectionManager::new_from_stringlike(connection_string, NoTls)?;
+impl DatabasePool {
+    pub async fn new(connection_string: &str) -> Result<Self, DatabaseError> {
+        let manager = PostgresConnectionManager::new_from_stringlike(connection_string, NoTls).map_err(DatabaseError::ConnectionManagerError)?;
         let pool = Pool::builder()
-            .max_size(50)                    // 並列処理数を増やす
-            .min_idle(Some(8))               // アイドル接続を維持
-            .connection_timeout(Duration::from_secs(5))  // タイムアウトを短く
-            .idle_timeout(Some(Duration::from_secs(60))) // アイドルタイムアウト
-            .max_lifetime(Some(Duration::from_secs(3600))) // 接続の最大寿命
+            .max_size(50)
+            .min_idle(Some(8))
+            .connection_timeout(Duration::from_secs(5))
+            .idle_timeout(Some(Duration::from_secs(60)))
+            .max_lifetime(Some(Duration::from_secs(3600)))
             .build(manager)
-            .await?;
+            .await.map_err(|e| DatabaseError::CreatePoolError(e.to_string()))?;
         Ok(Self { pool })
     }
 
@@ -31,7 +32,7 @@ impl DbPool {
         user: &str,
         password: &str,
         database: &str,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), DatabaseError> {
         let connection_string = format!(
             "postgres://{}:{}@{}:{}/{}",
             user, password, host, port, database
@@ -39,7 +40,13 @@ impl DbPool {
         let pool = Self::new(&connection_string).await?;
 
         // 接続テスト
-        let (client, connection) = tokio_postgres::connect(&connection_string, NoTls).await?;
+        let (client, connection) = tokio_postgres::connect(&connection_string, NoTls)
+            .await
+            .map_err(|e| {
+                eprintln!("接続エラー: {:?}", e);
+                DatabaseError::InitFailedConnectDatabase(e.to_string())
+            })?;
+
 
         tokio::spawn(async move {
             if let Err(e) = connection.await {
@@ -49,15 +56,15 @@ impl DbPool {
 
         drop(client);
 
-        DATABASE_POOL.set(pool).map_err(|_| DbError::Initialization)?;
+        DATABASE_POOL.set(pool).map_err(|_| DatabaseError::InitializationError)?;
         Ok(())
     }
 
-    pub(crate) fn get_pool() -> &'static DbPool {
-        DATABASE_POOL.get().expect("データベースプールが初期化されていません")
+    pub fn get_pool() -> Result<&'static DatabasePool, DatabaseError> {
+        DATABASE_POOL.get().ok_or(DatabaseError::PoolNotInitialized)
     }
 
-    pub(crate) fn inner(&self) -> &Pool<PostgresConnectionManager<NoTls>> {
+    pub fn inner(&self) -> &Pool<PostgresConnectionManager<NoTls>> {
         &self.pool
     }
 }
