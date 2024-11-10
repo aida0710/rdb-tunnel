@@ -5,7 +5,7 @@ use crate::packet::analysis::transport::parse_transport_header;
 use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, MacAddr, PacketData};
 use chrono::Utc;
-use log::{error, info};
+use log::{error, trace};
 use std::net::{IpAddr, Ipv4Addr};
 
 #[derive(Clone, Copy)]
@@ -44,7 +44,7 @@ impl PacketAnalyzer {
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
-        info!("{:?}", PacketData {
+        trace!("{:?}", PacketData {
             src_mac: ethernet_header.src_mac.clone(),
             dst_mac: ethernet_header.dst_mac.clone(),
             ether_type: ethernet_header.ether_type,
