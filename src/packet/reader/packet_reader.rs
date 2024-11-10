@@ -1,4 +1,3 @@
-use crate::packet::error::PacketError;
 use crate::packet::reader::packet_sender::PacketSender;
 use crate::packet::repository::PacketRepository;
 use crate::packet::types::Packet;
@@ -8,6 +7,7 @@ use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use crate::packet::reader::error::PacketReaderError;
 
 #[derive(Clone)]
 pub struct PacketReader {
@@ -61,7 +61,7 @@ impl PacketReader {
         is_for_me || is_broadcast || is_tunnel_traffic
     }
 
-    pub async fn poll_packets(&self) -> Result<Vec<Packet>, PacketError> {
+    pub async fn poll_packets(&self) -> Result<Vec<Packet>, PacketReaderError> {
         let mut last_ts = self.last_timestamp.lock().await;
         let is_first = self.is_first_poll.load(Ordering::SeqCst);
         let current_time = chrono::Utc::now();
@@ -71,7 +71,7 @@ impl PacketReader {
             is_first,
             last_ts.as_ref(),
             1500, // MAX_PACKET_SIZE
-        ).await?;
+        ).await.map_err(|e| PacketReaderError::FilteredPacketsFetchError(e))?;
 
         if let Some(packet) = packets.last() {
             *last_ts = Some(packet.timestamp);
@@ -89,7 +89,7 @@ impl PacketReader {
             .collect())
     }
 
-    pub async fn poll_and_send_packets(&self) -> Result<(), PacketError> {
+    pub async fn poll_and_send_packets(&self) -> Result<(), PacketReaderError> {
         match self.poll_packets().await {
             Ok(packets) => {
                 let packet_count = packets.len();
@@ -115,18 +115,18 @@ impl PacketReader {
             }
             Err(e) => {
                 error!("ポーリングとパケット送信中のエラー: {:?}", e);
-                Err(e)
+                Err(PacketReaderError::PollingAndSendingError(e.to_string()))
             }
         }
     }
 }
 
-pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketError> {
+pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketReaderError> {
     let my_ip = interface.ips
         .iter()
         .find(|ip| ip.is_ipv4())
         .map(|ip| ip.ip())
-        .ok_or_else(|| PacketError::DeviceError("IPv4アドレスが見つかりません".to_string()))?;
+        .ok_or_else(|| PacketReaderError::InterfaceIpv4AddressNotFound(interface.to_string()))?;
 
     info!("パケット転送を開始します: {}", my_ip);
 
@@ -137,6 +137,7 @@ pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketErro
         interval.tick().await;
         if let Err(e) = poller.poll_and_send_packets().await {
             error!("パケット処理中にエラーが発生しました: {:?}", e);
+            Err(PacketReaderError::InjectPacketUnexpectedError(e.to_string()))?;
         }
     }
 }
