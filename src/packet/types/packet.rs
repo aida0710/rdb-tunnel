@@ -50,21 +50,3 @@ impl PacketData {
         }
     }
 }
-
-impl Packet {
-    pub fn to_packet_data(&self) -> PacketData {
-        PacketData {
-            src_mac: self.src_mac.clone(),
-            dst_mac: self.dst_mac.clone(),
-            ether_type: EtherType::from(self.ether_type as u16),
-            src_ip: InetAddr(self.src_ip),
-            dst_ip: InetAddr(self.dst_ip),
-            src_port: self.src_port.unwrap_or(0),
-            dst_port: self.dst_port.unwrap_or(0),
-            ip_protocol: IpProtocol::from(self.ip_protocol as u8),
-            timestamp: self.timestamp,
-            data: self.data.clone(),
-            raw_packet: self.raw_packet.clone(),
-        }
-    }
-}
