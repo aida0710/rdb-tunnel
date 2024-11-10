@@ -19,10 +19,10 @@ pub enum IPOptionViolation {
 
 #[derive(Debug, Clone)]
 pub enum FragmentViolation {
-    FragmentStorm,     // 大量のフラグメント
+    //  FragmentStorm,     // 大量のフラグメント
     LargeOffset,       // 大きなオフセット値
-    TooManyFragments,  // 過剰な分割数
-    Teardrop,          // teardrop攻撃
+    // TooManyFragments,  // 過剰な分割数
+    // Teardrop,          // teardrop攻撃
     SameOffset,        // オフセット値の重複
     InvalidFragment,   // その他の不正フラグメント
 }
