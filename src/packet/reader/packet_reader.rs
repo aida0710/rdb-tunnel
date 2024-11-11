@@ -1,13 +1,13 @@
+use crate::packet::reader::error::PacketReaderError;
 use crate::packet::reader::packet_sender::PacketSender;
 use crate::packet::repository::PacketRepository;
-use crate::packet::types::Packet;
+use crate::packet::types::{Packet, TimescaleFormat};
 use log::{debug, error, info, trace};
 use pnet::datalink::NetworkInterface;
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::packet::reader::error::PacketReaderError;
 
 #[derive(Clone)]
 pub struct PacketReader {
@@ -42,7 +42,7 @@ impl PacketReader {
         }
     }
 
-    fn should_process_packet(&self, packet: &Packet) -> bool {
+    fn should_process_packet(&self, packet: &TimescaleFormat) -> bool {
         let is_tunnel_traffic = packet.src_ip.to_string().starts_with("192.168.0.") ||
             packet.dst_ip.to_string().starts_with("192.168.0.");
 
@@ -61,7 +61,7 @@ impl PacketReader {
         is_for_me || is_broadcast || is_tunnel_traffic
     }
 
-    pub async fn poll_packets(&self) -> Result<Vec<Packet>, PacketReaderError> {
+    pub async fn poll_packets(&self) -> Result<Vec<TimescaleFormat>, PacketReaderError> {
         let mut last_ts = self.last_timestamp.lock().await;
         let is_first = self.is_first_poll.load(Ordering::SeqCst);
         let current_time = chrono::Utc::now();
