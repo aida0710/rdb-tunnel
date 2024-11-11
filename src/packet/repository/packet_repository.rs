@@ -1,6 +1,5 @@
 use crate::database::{Database, DatabaseError, ExecuteQuery};
-use crate::packet::types::PacketData;
-use crate::packet::Packet;
+use crate::packet::types::{PacketData, TimescaleFormat};
 use chrono::{DateTime, Utc};
 use log::info;
 use std::net::IpAddr;
@@ -82,7 +81,7 @@ impl PacketRepository {
         is_first: bool,
         last_timestamp: Option<&DateTime<Utc>>,
         max_packet_size: i64,
-    ) -> Result<Vec<Packet>, DatabaseError> {
+    ) -> Result<Vec<TimescaleFormat>, DatabaseError> {
         let db = Database::get_database();
 
         let (query, params): (_, Vec<&(dyn ToSql + Sync)>) = if is_first {
@@ -124,7 +123,7 @@ impl PacketRepository {
         };
 
         let rows = db.query(&query, &params).await?;
-        Ok(rows.into_iter().map(|row| Packet {
+        Ok(rows.into_iter().map(|row| TimescaleFormat {
             src_mac: row.get("src_mac"),
             dst_mac: row.get("dst_mac"),
             ether_type: row.get("ether_type"),
