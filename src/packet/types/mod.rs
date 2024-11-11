@@ -5,5 +5,5 @@ mod protocol;
 
 pub use inet_addr::InetAddr;
 pub use mac_addr::MacAddr;
-pub use packet::{Packet, PacketData};
+pub use packet::{Packet, PacketData, TimescaleFormat};
 pub use protocol::{EtherType, IpProtocol};
