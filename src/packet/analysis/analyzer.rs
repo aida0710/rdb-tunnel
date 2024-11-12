@@ -4,7 +4,7 @@ use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Poli
 use crate::packet::analysis::ip::parse_ip_header;
 use crate::packet::analysis::transport::parse_transport_header;
 use crate::packet::types::{EtherType, IpProtocol};
-use crate::packet::{InetAddr, MacAddr, PacketData};
+use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
 use log::{error, trace};
@@ -16,6 +16,12 @@ pub struct IpHeader {
     pub protocol: u8,
     pub src_ip: IpAddr,
     pub dst_ip: IpAddr,
+}
+
+pub enum AnalyzeResult {
+    Accept(PacketData),
+    Reject,
+    Error(PacketAnalysisError),
 }
 
 lazy_static! {
@@ -33,25 +39,26 @@ lazy_static! {
 pub struct PacketAnalyzer;
 
 impl PacketAnalyzer {
-    pub async fn analyze_packet(ethernet_frame: &[u8]) -> Result<PacketData, PacketAnalysisError> {
+    pub async fn analyze_packet(ethernet_frame: &[u8]) -> AnalyzeResult {
         if ethernet_frame.len() < 14 {
             error!("ethernet headerが14byte未満です");
-            return Ok(Self::create_empty_packet_data(ethernet_frame));
+            return AnalyzeResult::Reject;
         }
 
         Self::inner_parse(ethernet_frame, 0).await
     }
 
-    async fn inner_parse(ethernet_frame: &[u8], depth: u8) -> Result<PacketData, PacketAnalysisError> {
+    async fn inner_parse(ethernet_frame: &[u8], depth: u8) -> AnalyzeResult {
         if depth > 5 || ethernet_frame.len() < 14 {
-            return Ok(Self::create_empty_packet_data(ethernet_frame));
+            return AnalyzeResult::Reject;
         }
 
         let (ethernet_header, _remaining_frame) = match parse_ethernet_header(ethernet_frame) {
             Some((header, remaining_frame)) => (header, remaining_frame),
             None => {
-                eprintln!("{}", PacketAnalysisError::InterfaceNotFound("Interface name".to_string()));
-                std::process::exit(1);
+                return AnalyzeResult::Error(
+                    PacketAnalysisError::InterfaceNotFound("Interface name".to_string())
+                );
             }
         };
 
@@ -74,9 +81,22 @@ impl PacketAnalyzer {
                 firewall_packet.src_ip, firewall_packet.src_port,
                 firewall_packet.dst_ip, firewall_packet.dst_port
             );
+            return AnalyzeResult::Reject;
         }
 
-        Ok(packet_data)
+        AnalyzeResult::Accept(PacketData {
+            src_mac: ethernet_header.src_mac,
+            dst_mac: ethernet_header.dst_mac,
+            ether_type: ethernet_header.ether_type,
+            src_ip: InetAddr(src_ip),
+            dst_ip: InetAddr(dst_ip),
+            src_port: src_port as i32,
+            dst_port: dst_port as i32,
+            ip_protocol,
+            timestamp: Utc::now(),
+            data: ethernet_frame[payload_offset..].to_vec(),
+            raw_packet: ethernet_frame.to_vec(),
+        })
     }
 
     async fn parse_ip_packet(
@@ -123,22 +143,5 @@ impl PacketAnalyzer {
         }
 
         (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset)
-    }
-
-    fn create_empty_packet_data(raw_packet: &[u8]) -> PacketData {
-        PacketData {
-            src_mac: MacAddr([0; 6]),
-            dst_mac: MacAddr([0; 6]),
-            ether_type: EtherType::UNKNOWN,
-            src_ip: InetAddr(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
-            dst_ip: InetAddr(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
-            src_port: 0,
-            dst_port: 0,
-            ip_protocol: IpProtocol::UNKNOWN,
-            timestamp: Utc::now(),
-            data: Vec::new(),
-            raw_packet: raw_packet.to_vec(),
-            buffer_push: false,
-        }
     }
 }

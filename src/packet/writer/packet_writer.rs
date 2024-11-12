@@ -1,4 +1,4 @@
-use crate::packet::analysis::PacketAnalyzer;
+use crate::packet::analysis::{AnalyzeResult, PacketAnalyzer};
 use crate::packet::repository::PacketRepository;
 use crate::packet::writer::error::WriterError;
 use crate::packet::writer::PacketBuffer;
@@ -51,24 +51,16 @@ impl PacketWriter {
     }
 
     pub async fn process_packet(&self, ethernet_frame: &[u8]) -> Result<(), WriterError> {
-        if ethernet_frame.len() < 14 {
-            trace!("パケット長が14bit未満のEthernetFrameが検出されました");
-            return Ok(());
-        }
-
         match PacketAnalyzer::analyze_packet(ethernet_frame).await {
-            Ok(packet_data) => {
-                if packet_data.buffer_push {
-                    Ok(self.buffer.push(packet_data).await)
-                } else {
-                    trace!("バッファへの追加がスキップされました: {}:{} -> {}:{}",
-                        packet_data.src_ip.0, packet_data.src_port,
-                        packet_data.dst_ip.0, packet_data.dst_port
-                    );
-                    Ok(())
-                }
+            AnalyzeResult::Accept(packet_data) => {
+                self.buffer.push(packet_data).await;
+                Ok(())
             }
-            Err(e) => Err(WriterError::PacketParsingError(e.to_string())),
+            AnalyzeResult::Reject => {
+                trace!("パケットが拒否されました");
+                Ok(())
+            }
+            AnalyzeResult::Error(e) => Err(WriterError::PacketParsingError(e.to_string())),
         }
     }
 }

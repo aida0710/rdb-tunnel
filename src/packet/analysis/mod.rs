@@ -6,3 +6,4 @@ mod transport;
 mod firewall;
 
 pub use analyzer::PacketAnalyzer;
+pub use analyzer::AnalyzeResult;
