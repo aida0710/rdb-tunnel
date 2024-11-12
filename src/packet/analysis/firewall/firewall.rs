@@ -30,12 +30,12 @@ impl IpFirewall {
                     // L2 Filters
                     Filter::SrcMacAddress(mac) => &packet.src_mac == mac,
                     Filter::DstMacAddress(mac) => &packet.dst_mac == mac,
-                    Filter::EtherType(ether_type) => packet.ether_type == *ether_type,
+                    Filter::EtherType(ether_type) => packet.ether_type.value() == *ether_type,
 
                     // L3 Filters
                     Filter::SrcIpAddress(ip) => &packet.src_ip == ip,
                     Filter::DstIpAddress(ip) => &packet.dst_ip == ip,
-                    Filter::IpProtocol(protocol) => packet.ip_protocol == *protocol,
+                    Filter::IpProtocol(protocol) => packet.ip_protocol.value() == *protocol,
 
                     // L4 Filters
                     Filter::SrcPort(port) => packet.src_port == *port,

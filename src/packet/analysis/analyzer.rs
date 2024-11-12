@@ -58,30 +58,18 @@ impl PacketAnalyzer {
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
-        let mut packet_data = PacketData {
-            src_mac: ethernet_header.src_mac,
-            dst_mac: ethernet_header.dst_mac,
-            ether_type: ethernet_header.ether_type,
-            src_ip: InetAddr(src_ip),
-            dst_ip: InetAddr(dst_ip),
-            src_port: src_port as i32,
-            dst_port: dst_port as i32,
+        let firewall_packet = FirewallPacket::from_packet(
+            ethernet_header.src_mac.clone(),
+            ethernet_header.dst_mac.clone(),
+            ethernet_header.ether_type,
+            src_ip,
+            dst_ip,
             ip_protocol,
-            timestamp: Utc::now(),
-            data: ethernet_frame[payload_offset..].to_vec(),
-            raw_packet: ethernet_frame.to_vec(),
-            buffer_push: true,
-        };
+            src_port,
+            dst_port,
+        );
 
-        let firewall_packet = FirewallPacket::from_packet(&packet_data.to_packet());
-
-        if FIREWALL.check(&firewall_packet) {
-            trace!("許可：firewall_packet: {}:{} -> {}:{}",
-                firewall_packet.src_ip, firewall_packet.src_port,
-                firewall_packet.dst_ip, firewall_packet.dst_port
-            );
-        } else {
-            packet_data.buffer_push = false;
+        if !FIREWALL.check(&firewall_packet) {
             trace!("Firewallによりバッファ追加が禁止: {}:{} -> {}:{}",
                 firewall_packet.src_ip, firewall_packet.src_port,
                 firewall_packet.dst_ip, firewall_packet.dst_port

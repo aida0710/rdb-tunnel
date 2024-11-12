@@ -1,18 +1,19 @@
 use crate::packet::MacAddr;
 use std::net::IpAddr;
+use crate::packet::types::{EtherType, IpProtocol};
 
 #[derive(Debug)]
 pub struct FirewallPacket {
     // L2 fields
     pub src_mac: MacAddr,
     pub dst_mac: MacAddr,
-    pub ether_type: u16,
+    pub ether_type: EtherType,
 
     // L3 fields
     pub src_ip: IpAddr,
     pub dst_ip: IpAddr,
     pub ip_version: u8,
-    pub ip_protocol: u8,
+    pub ip_protocol: IpProtocol,
 
     // L4 fields
     pub src_port: u16,
@@ -20,20 +21,29 @@ pub struct FirewallPacket {
 }
 
 impl FirewallPacket {
-    pub fn from_packet(packet: &crate::packet::Packet) -> Self {
+    pub fn from_packet(
+        src_mac: MacAddr,
+        dst_mac: MacAddr,
+        ether_type: EtherType,
+        src_ip: IpAddr,
+        dst_ip: IpAddr,
+        ip_protocol: IpProtocol,
+        src_port: u16,
+        dst_port: u16,
+    ) -> Self {
         Self {
-            src_mac: packet.src_mac.clone(),
-            dst_mac: packet.dst_mac.clone(),
-            ether_type: packet.ether_type as u16,
-            src_ip: packet.src_ip,
-            dst_ip: packet.dst_ip,
-            ip_version: match packet.src_ip {
+            src_mac,
+            dst_mac,
+            ether_type,
+            src_ip,
+            dst_ip,
+            ip_version: match src_ip {
                 IpAddr::V4(_) => 4,
                 IpAddr::V6(_) => 6,
             },
-            ip_protocol: packet.ip_protocol as u8,
-            src_port: packet.src_port.unwrap_or(0) as u16,
-            dst_port: packet.dst_port.unwrap_or(0) as u16,
+            ip_protocol,
+            src_port,
+            dst_port,
         }
     }
 }

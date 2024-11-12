@@ -1,6 +1,7 @@
 use crate::packet::MacAddr;
 use std::net::IpAddr;
 
+#[allow(dead_code)]
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum Filter {
     // L2 Filters
