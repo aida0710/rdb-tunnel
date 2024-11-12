@@ -1,3 +1,4 @@
+use crate::idps_log;
 use crate::packet::types::{EtherType, MacAddr};
 use log::debug;
 
@@ -10,6 +11,7 @@ pub struct EthernetHeader {
 
 pub fn parse_ethernet_header(frame: &[u8]) -> Option<(EthernetHeader, &[u8])> {
     if frame.len() < 14 {
+        idps_log!("Ethernet header too short");
         return None;
     }
 
