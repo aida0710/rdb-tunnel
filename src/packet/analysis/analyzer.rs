@@ -49,7 +49,8 @@ impl PacketAnalyzer {
     }
 
     async fn inner_parse(ethernet_frame: &[u8], depth: u8) -> AnalyzeResult {
-        if depth > 5 || ethernet_frame.len() < 14 {
+        if depth > 5 { //現在は未使用
+            error!("パケットの再起処理回数が上限に達しました");
             return AnalyzeResult::Reject;
         }
 
