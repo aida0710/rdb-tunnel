@@ -4,22 +4,25 @@ mod config;
 mod tasks;
 mod packet;
 mod interface;
+mod logger;
 
-use crate::config::{setup_logger, AppConfig};
+use crate::config::AppConfig;
 use crate::database::Database;
 use crate::error::InitProcessError;
 use crate::interface::{select_interface, setup_interface};
+use crate::logger::setup_logger;
 use crate::tasks::TaskScheduler;
 use log::{error, info};
 use tun_tap::{Iface, Mode};
 
 #[tokio::main]
 async fn main() -> Result<(), InitProcessError> {
-    // ロガーのセットアップ
-    setup_logger().map_err(|e| InitProcessError::LoggerError(e.to_string()))?;
-
     // 設定の読み込み
     let config: AppConfig = AppConfig::new().map_err(|e| InitProcessError::ConfigurationError(e.to_string()))?;
+
+    // ロガーのセットアップ
+    setup_logger(config.logger_config).map_err(|e| InitProcessError::LoggerError(e.to_string()))?;
+
 
     // データベース接続
     Database::connect(
