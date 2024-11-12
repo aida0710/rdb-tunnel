@@ -1,8 +1,10 @@
 use crate::logger::error::LoggerError;
 use chrono::Local;
 use once_cell::sync::Lazy;
+use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::path::Path;
 use std::sync::Mutex;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,11 +30,31 @@ static LOGGER: Lazy<Mutex<LogConfig>> = Lazy::new(|| {
 });
 
 fn create_log_file(file_path: &str) -> Result<File, LoggerError> {
-    OpenOptions::new()
+    let path = Path::new(file_path);
+
+    // 親ディレクトリが存在するか確認し、存在しなければ作成する
+    if let Some(parent) = path.parent() {
+        if parent.exists() {
+            println!("ディレクトリが既に存在します: {}", parent.display());
+        } else {
+            if let Err(e) = fs::create_dir_all(parent) {
+                return Err(LoggerError::LogFileCreateError(e.to_string()));
+            }
+            println!("ディレクトリを作成しました: {}", parent.display());
+        }
+    }
+
+    match OpenOptions::new()
         .create(true)
         .append(true)
         .open(file_path)
-        .map_err(|e| LoggerError::LogFileCreateError(e.to_string()))
+    {
+        Ok(file) => {
+            println!("ファイルを作成または開きました: {}", file_path);
+            Ok(file)
+        }
+        Err(e) => Err(LoggerError::LogFileCreateError(e.to_string())),
+    }
 }
 
 pub fn set_output_mode(mode: OutputMode) {
