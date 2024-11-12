@@ -1,8 +1,8 @@
 use crate::packet::reader::error::PacketReaderError;
-use crate::packet::types::TimescaleFormat;
 use log::{debug, error, trace};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface};
+use crate::packet::Packet;
 
 pub struct PacketSender;
 
@@ -11,7 +11,7 @@ impl PacketSender {
 
     pub async fn send_packet(
         interface: &NetworkInterface,
-        packet: &TimescaleFormat,
+        packet: &Packet,
     ) -> Result<(), PacketReaderError> {
         if packet.raw_packet.len() > Self::MAX_PACKET_SIZE {
             debug!(
