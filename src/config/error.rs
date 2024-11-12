@@ -10,7 +10,4 @@ pub enum ConfigError {
 
     #[error("環境変数の解析に失敗しました: {0}")]
     EnvVarParseError(String),
-
-    #[error("ログファイルの作成に失敗しました: {0}")]
-    LogFileCreateError(String),
 }

@@ -4,7 +4,6 @@ use super::rules::*;
 pub struct IDPSConfig {
     pub enabled: bool,
     pub rules: DetectionRules,
-    pub log_violations: bool,
     pub block_violations: bool,
 }
 
@@ -21,7 +20,6 @@ impl Default for IDPSConfig {
                 tcp: vec![],
                 ftp: vec![],
             },
-            log_violations: true,
             block_violations: true,
         }
     }
