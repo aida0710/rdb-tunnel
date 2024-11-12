@@ -9,6 +9,7 @@ lazy_static! {
 
 pub struct PacketBuffer;
 
+#[allow(dead_code)]
 impl PacketBuffer {
     pub async fn push(&self, packet: PacketData) {
         PACKET_BUFFER.lock().await.push(packet);

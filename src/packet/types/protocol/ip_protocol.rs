@@ -6,6 +6,7 @@ use std::error::Error;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IpProtocol(u8);
 
+#[allow(dead_code)]
 impl IpProtocol {
     /// 既知のIPプロトコル定数
     pub const ICMP: IpProtocol = IpProtocol(1);

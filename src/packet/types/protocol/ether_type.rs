@@ -2,12 +2,13 @@ use bytes::BytesMut;
 use postgres_types::{IsNull, ToSql, Type};
 use std::error::Error;
 
-/// EtherType (IEEE 802.3)
+// EtherType (IEEE 802.3)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EtherType(u16);
 
+#[allow(dead_code)]
 impl EtherType {
-    /// 既知のEtherType定数
+    // 既知のEtherType定数
     pub const IP_V4: EtherType = EtherType(0x0800);
     pub const IP_V6: EtherType = EtherType(0x86DD);
     pub const ARP: EtherType = EtherType(0x0806);
@@ -27,7 +28,7 @@ impl EtherType {
         self.0 as i32
     }
 
-    /// Ethernetプロトコルかどうかを判定
+    // Ethernetプロトコルかどうかを判定
     pub fn is_ethernet_protocol(&self) -> bool {
         self.0 >= 0x0800
     }
