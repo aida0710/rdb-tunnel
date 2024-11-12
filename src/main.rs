@@ -5,6 +5,7 @@ mod tasks;
 mod packet;
 mod interface;
 mod logger;
+mod utils;
 
 use crate::config::AppConfig;
 use crate::database::Database;
