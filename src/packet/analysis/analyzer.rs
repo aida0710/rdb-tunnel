@@ -56,11 +56,7 @@ impl PacketAnalyzer {
 
         let (ethernet_header, _remaining_frame) = match parse_ethernet_header(ethernet_frame) {
             Some((header, remaining_frame)) => (header, remaining_frame),
-            None => {
-                return AnalyzeResult::Error(
-                    PacketAnalysisError::InterfaceNotFound("Interface name".to_string())
-                );
-            }
+            None => { return AnalyzeResult::Reject; }
         };
 
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
