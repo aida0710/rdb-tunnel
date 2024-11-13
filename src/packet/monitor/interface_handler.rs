@@ -53,9 +53,7 @@ impl InterfaceHandler {
                 while let Some(ethernet_data) = packet_rx.recv().await {
                     let writer_clone = Arc::clone(&writer);
 
-                    let result = measure_time_async("パケット処理",
-                        Self::process_packet(&writer_clone, &ethernet_data),
-                    ).await;
+                    let result = Self::process_packet(&writer_clone, &ethernet_data).await;
 
                     match result {
                         Ok(_) => log::debug!("パケット処理成功"),
