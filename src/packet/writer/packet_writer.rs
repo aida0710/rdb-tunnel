@@ -9,16 +9,17 @@ const FLUSH_INTERVAL: Duration = Duration::from_millis(100);
 
 pub struct PacketWriter {
     buffer: PacketBuffer,
+    analyzer: PacketAnalyzer,
 }
 
 impl Default for PacketWriter {
     fn default() -> Self {
         Self {
             buffer: PacketBuffer::default(),
+            analyzer: PacketAnalyzer::new(),
         }
     }
 }
-
 
 impl PacketWriter {
     pub async fn start(&self) {
@@ -51,7 +52,7 @@ impl PacketWriter {
     }
 
     pub async fn process_packet(&self, ethernet_frame: &[u8]) -> Result<(), WriterError> {
-        match PacketAnalyzer::analyze_packet(ethernet_frame).await {
+        match self.analyzer.analyze_packet(ethernet_frame).await {
             AnalyzeResult::Accept(packet_data) => {
                 info!("書き込まれるパケット: {:?}", packet_data);
                 self.buffer.push(packet_data).await;
