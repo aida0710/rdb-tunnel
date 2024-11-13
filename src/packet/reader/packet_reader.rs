@@ -67,10 +67,8 @@ impl PacketReader {
         let current_time = chrono::Utc::now();
 
         let packets = PacketRepository::get_filtered_packets(
-            self.my_ip,
             is_first,
             last_ts.as_ref(),
-            1500, // MAX_PACKET_SIZE
         ).await.map_err(|e| PacketReaderError::FilteredPacketsFetchError(e))?;
 
         if let Some(packet) = packets.last() {
@@ -84,9 +82,7 @@ impl PacketReader {
             info!("初回ポーリング完了、フラグを更新しました");
         }
 
-        Ok(packets.into_iter()
-            .filter(|p| self.should_process_packet(p))
-            .collect())
+        Ok(packets.into_iter().collect())
     }
 
     pub async fn poll_and_send_packets(&self) -> Result<(), PacketReaderError> {

@@ -53,6 +53,7 @@ impl PacketWriter {
     pub async fn process_packet(&self, ethernet_frame: &[u8]) -> Result<(), WriterError> {
         match PacketAnalyzer::analyze_packet(ethernet_frame).await {
             AnalyzeResult::Accept(packet_data) => {
+                info!("書き込まれるパケット: {:?}", packet_data);
                 self.buffer.push(packet_data).await;
                 Ok(())
             }

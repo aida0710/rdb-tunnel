@@ -1,8 +1,8 @@
 use crate::packet::reader::error::PacketReaderError;
-use log::{debug, error, trace};
+use crate::packet::Packet;
+use log::{debug, error, info, trace};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface};
-use crate::packet::Packet;
 
 pub struct PacketSender;
 
@@ -37,7 +37,7 @@ impl PacketSender {
 
         match tx.send_to(&*packet.raw_packet, None) {
             Some(Ok(_)) => {
-                trace!("パケット送信完了: ip-prot:{} {} -> {}",
+                info!("パケット送信完了: ip-prot:{} {} -> {}",
                     packet.ip_protocol,
                     packet.src_ip,
                     packet.dst_ip,

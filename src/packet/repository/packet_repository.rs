@@ -78,48 +78,31 @@ impl PacketRepository {
     }
 
     pub async fn get_filtered_packets(
-        my_ip: IpAddr,
         is_first: bool,
         last_timestamp: Option<&DateTime<Utc>>,
-        max_packet_size: i64,
     ) -> Result<Vec<Packet>, DatabaseError> {
         let db = Database::get_database();
 
         let (query, params): (_, Vec<&(dyn ToSql + Sync)>) = if is_first {
             (
                 "SELECT * FROM packets
-            WHERE length(raw_packet) <= $1::bigint
-                AND (dst_ip = $2
-                    OR dst_ip = '255.255.255.255'
-                    OR dst_ip << '224.0.0.0/4'
-                )
-                AND timestamp >= NOW() - INTERVAL '30 seconds'
-            ORDER BY timestamp ASC".to_string(),
-                vec![&max_packet_size, &my_ip]
+                WHERE timestamp >= NOW() - INTERVAL '30 seconds'
+                ORDER BY timestamp ASC".to_string(),
+                vec![]
             )
         } else if let Some(ts) = last_timestamp {
             (
                 "SELECT * FROM packets
-            WHERE timestamp > $2
-                AND length(raw_packet) <= $1::bigint
-                AND (dst_ip = $3
-                    OR dst_ip = '255.255.255.255'
-                    OR dst_ip << '224.0.0.0/4'
-                )
-            ORDER BY timestamp ASC".to_string(),
-                vec![&max_packet_size, ts, &my_ip]
+                WHERE timestamp > $1
+                ORDER BY timestamp ASC".to_string(),
+                vec![ts]
             )
         } else {
             (
                 "SELECT * FROM packets
-            WHERE length(raw_packet) <= $1::bigint
-                AND (dst_ip = $2
-                    OR dst_ip = '255.255.255.255'
-                    OR dst_ip << '224.0.0.0/4'
-                )
-                AND timestamp >= NOW() - INTERVAL '5 seconds'
-            ORDER BY timestamp ASC".to_string(),
-                vec![&max_packet_size, &my_ip]
+                WHERE timestamp >= NOW() - INTERVAL '5 seconds'
+                ORDER BY timestamp ASC".to_string(),
+                vec![]
             )
         };
 
