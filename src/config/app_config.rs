@@ -13,6 +13,7 @@ pub struct DatabaseConfig {
 
 #[derive(Debug, Clone)]
 pub struct NetworkConfig {
+    pub use_tap_interface: bool,
     pub tap_ip: String,
     pub tap_mask: String,
     pub tap_interface_name: String,
@@ -53,6 +54,7 @@ impl AppConfig {
                 database: get_env_var("TIMESCALE_DB_DATABASE")?,
             },
             network: NetworkConfig {
+                use_tap_interface: dotenv::var("USE_TAP_INTERFACE").map(|v| v.to_lowercase() == "true").unwrap_or(false),
                 tap_ip: get_env_var("TAP_IP")?,
                 tap_mask: get_env_var("TAP_MASK")?,
                 tap_interface_name: get_env_var("TAP_INTERFACE_NAME")?,
