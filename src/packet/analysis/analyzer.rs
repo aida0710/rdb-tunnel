@@ -1,4 +1,3 @@
-use crate::packet::analysis::error::PacketAnalysisError;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
@@ -7,8 +6,11 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{error, trace};
+use log::{debug, trace};
 use std::net::{IpAddr, Ipv4Addr};
+use crate::packet::analysis::duplicate_tracker::{PacketIdentifier, PacketTracker};
+use crate::packet::analysis::error::PacketAnalysisError;
+use crate::packet::analysis::ttl_processor::TtlProcessor;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -36,32 +38,53 @@ lazy_static! {
     };
 }
 
-pub struct PacketAnalyzer;
+pub struct PacketAnalyzer {
+    tracker: PacketTracker,
+    ttl_processor: TtlProcessor,
+}
 
 impl PacketAnalyzer {
-    pub async fn analyze_packet(ethernet_frame: &[u8]) -> AnalyzeResult {
-        if ethernet_frame.len() < 14 {
-            error!("ethernet headerが14byte未満です");
-            return AnalyzeResult::Reject;
+    pub fn new() -> Self {
+        Self {
+            tracker: PacketTracker::new(),
+            ttl_processor: TtlProcessor::new(),
         }
-
-        Self::inner_parse(ethernet_frame, 0).await
     }
 
-    async fn inner_parse(ethernet_frame: &[u8], depth: u8) -> AnalyzeResult {
-        if depth > 5 { //現在は未使用
-            error!("パケットの再起処理回数が上限に達しました");
+    pub async fn analyze_packet(&self, ethernet_frame: &[u8]) -> AnalyzeResult {
+        // 基本的な長さチェック
+        if ethernet_frame.len() < 14 + 20 {  // Ethernet + 最小IP header
             return AnalyzeResult::Reject;
         }
 
-        let (ethernet_header, _remaining_frame) = match parse_ethernet_header(ethernet_frame) {
-            Some((header, remaining_frame)) => (header, remaining_frame),
-            None => { return AnalyzeResult::Reject; }
+        // Ethernetヘッダーの解析
+        let (ethernet_header, _) = match parse_ethernet_header(ethernet_frame) {
+            Some(result) => result,
+            None => return AnalyzeResult::Reject,
         };
 
+        // IPヘッダーの解析とTTLチェック
+        let ip_header_offset = 14;
+        let ttl = ethernet_frame[ip_header_offset + 8];
+
+        if !self.ttl_processor.is_valid_ttl(ttl) {
+            trace!("TTLが低すぎるパケットを破棄: TTL={}", ttl);
+            return AnalyzeResult::Reject;
+        }
+
+        // IPパケットの詳細な解析
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
+        // 重複チェック
+        let identifier = PacketIdentifier::new(src_ip, dst_ip, ip_protocol.value(), src_port, dst_port);
+        if self.tracker.is_duplicate(&identifier).await {
+            trace!("重複パケットを検出: src={}:{}, dst={}:{}",
+                src_ip, src_port, dst_ip, dst_port);
+            return AnalyzeResult::Reject;
+        }
+
+        // Firewallチェック
         let firewall_packet = FirewallPacket::from_packet(
             ethernet_header.src_mac.clone(),
             ethernet_header.dst_mac.clone(),
@@ -81,6 +104,15 @@ impl PacketAnalyzer {
             return AnalyzeResult::Reject;
         }
 
+        // キャッシュのクリーンアップ
+        self.tracker.cleanup_if_needed().await;
+
+        // 新しいパケットの作成（TTLを減少させる）
+        let mut new_packet = ethernet_frame.to_vec();
+        self.ttl_processor.process_packet(&mut new_packet, ip_header_offset);
+
+        debug!("パケット処理完了: TTL={} -> {}", ttl, ttl - 1);
+
         AnalyzeResult::Accept(PacketData {
             src_mac: ethernet_header.src_mac,
             dst_mac: ethernet_header.dst_mac,
@@ -91,8 +123,8 @@ impl PacketAnalyzer {
             dst_port: dst_port as i32,
             ip_protocol,
             timestamp: Utc::now(),
-            data: ethernet_frame[payload_offset..].to_vec(),
-            raw_packet: ethernet_frame.to_vec(),
+            data: new_packet[payload_offset..].to_vec(),
+            raw_packet: new_packet,
         })
     }
 
