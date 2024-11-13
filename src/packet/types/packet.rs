@@ -18,7 +18,7 @@ pub struct PacketData {
     pub raw_packet: Vec<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Packet {
     pub src_mac: MacAddr,
     pub dst_mac: MacAddr,
