@@ -1,6 +1,5 @@
 use crate::packet::monitor::error::MonitorError;
 use crate::packet::writer::PacketWriter;
-use crate::utils::measure_time::measure_time_async;
 use log::{error, info};
 use pnet::datalink::{self, Channel::Ethernet, NetworkInterface};
 use std::sync::Arc;
