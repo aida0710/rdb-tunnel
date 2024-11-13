@@ -77,7 +77,7 @@ impl PacketReader {
 
                 let sent = self.packets_sent.load(Ordering::SeqCst);
                 let failed = self.packets_failed.load(Ordering::SeqCst);
-                info!("パケット処理が完了しました - 成功: {}, 失敗: {}", sent, failed);
+                trace!("パケット処理が完了しました - 成功: {}, 失敗: {}", sent, failed);
 
                 self.packets_sent.store(0, Ordering::SeqCst);
                 self.packets_failed.store(0, Ordering::SeqCst);
