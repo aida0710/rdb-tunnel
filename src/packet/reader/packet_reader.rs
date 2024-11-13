@@ -2,7 +2,7 @@ use crate::packet::reader::error::PacketReaderError;
 use crate::packet::reader::packet_sender::PacketSender;
 use crate::packet::repository::PacketRepository;
 use crate::packet::Packet;
-use log::{debug, error, info};
+use log::{debug, error, info, trace, warn};
 use pnet::datalink::NetworkInterface;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -28,39 +28,47 @@ impl PacketReader {
         }
     }
 
-    pub async fn poll_packets(&self) -> Result<Vec<Packet>, PacketReaderError> {
+    async fn poll_packets(&self) -> Result<Vec<Packet>, PacketReaderError> {
         let mut last_ts = self.last_timestamp.lock().await;
         let is_first = self.is_first_poll.load(Ordering::SeqCst);
         let current_time = chrono::Utc::now();
+        trace!("現在時刻: {:?}", current_time);
 
-        let packets = PacketRepository::get_filtered_packets(
-            is_first,
-            last_ts.as_ref(),
-        ).await.map_err(|e| PacketReaderError::FilteredPacketsFetchError(e))?;
+        match PacketRepository::get_filtered_packets(is_first, last_ts.as_ref()).await {
+            Ok(packets) => {
+                if let Some(packet) = packets.last() {
+                    debug!("最後のパケットのタイムスタンプ: {:?}", packet.timestamp);
+                    *last_ts = Some(packet.timestamp);
+                } else {
+                    warn!("パケットが受信されませんでした。最終タイムスタンプを現在時刻に設定します。");
+                    *last_ts = Some(current_time);
+                }
 
-        if let Some(packet) = packets.last() {
-            *last_ts = Some(packet.timestamp);
-        } else {
-            *last_ts = Some(current_time);
+                if is_first {
+                    self.is_first_poll.store(false, Ordering::SeqCst);
+                    info!("初回ポーリングが完了しました。フラグを更新します。");
+                }
+
+                debug!("パケットのポーリングが完了しました。トータルパケット数: {}", packets.len());
+                Ok(packets)
+            }
+            Err(e) => {
+                error!("フィルタリングされたパケットの取得エラー: {:?}", e);
+                Err(PacketReaderError::FilteredPacketsFetchError(e))
+            }
         }
-
-        if is_first {
-            self.is_first_poll.store(false, Ordering::SeqCst);
-            info!("初回ポーリング完了、フラグを更新しました");
-        }
-
-        Ok(packets.into_iter().collect())
     }
 
     pub async fn poll_and_send_packets(&self) -> Result<(), PacketReaderError> {
+        debug!("パケットのポーリングと送信プロセスを開始します。");
         match self.poll_packets().await {
             Ok(packets) => {
                 let packet_count = packets.len();
-                debug!("{}個のパケットを取得しました", packet_count);
+                debug!("{} 件のパケットを取得しました。", packet_count);
 
                 for packet in packets {
                     if let Err(e) = PacketSender::send_packet(&self.interface, &packet).await {
-                        error!("パケット送信エラー: {}", e);
+                        error!("パケット送信に失敗しました: {}", e);
                         self.packets_failed.fetch_add(1, Ordering::SeqCst);
                         continue;
                     }
@@ -69,15 +77,16 @@ impl PacketReader {
 
                 let sent = self.packets_sent.load(Ordering::SeqCst);
                 let failed = self.packets_failed.load(Ordering::SeqCst);
-                info!("パケット処理完了 - 成功: {}, 失敗: {}", sent, failed);
+                info!("パケット処理が完了しました - 成功: {}, 失敗: {}", sent, failed);
 
                 self.packets_sent.store(0, Ordering::SeqCst);
                 self.packets_failed.store(0, Ordering::SeqCst);
 
+                debug!("送信および失敗したパケットカウンタをリセットしました。");
                 Ok(())
             }
             Err(e) => {
-                error!("ポーリングとパケット送信中のエラー: {:?}", e);
+                error!("パケットのポーリングと送信中にエラーが発生しました: {:?}", e);
                 Err(PacketReaderError::PollingAndSendingError(e.to_string()))
             }
         }
@@ -98,9 +107,13 @@ pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketRead
 
     loop {
         interval.tick().await;
-        if let Err(e) = poller.poll_and_send_packets().await {
-            error!("パケット処理中にエラーが発生しました: {:?}", e);
-            Err(PacketReaderError::InjectPacketUnexpectedError(e.to_string()))?;
+        match poller.poll_and_send_packets().await {
+            Ok(_) => {
+                debug!("パケット処理が正常に完了しました。");
+            }
+            Err(e) => {
+                error!("パケット処理中にエラーが発生しました: {:?}", e);
+            }
         }
     }
 }
