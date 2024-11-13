@@ -1,5 +1,6 @@
 use crate::packet::monitor::error::MonitorError;
 use crate::packet::writer::PacketWriter;
+use crate::utils::measure_time::measure_time_async;
 use log::{error, info};
 use pnet::datalink::{self, Channel::Ethernet, NetworkInterface};
 use std::sync::Arc;
@@ -51,7 +52,15 @@ impl InterfaceHandler {
             async move {
                 while let Some(ethernet_data) = packet_rx.recv().await {
                     let writer_clone = Arc::clone(&writer);
-                    let _ = Self::process_packet(&writer_clone, &ethernet_data).await;
+
+                    let result = measure_time_async("パケット処理",
+                        Self::process_packet(&writer_clone, &ethernet_data),
+                    ).await;
+
+                    match result {
+                        Ok(_) => log::debug!("パケット処理成功"),
+                        Err(e) => log::error!("パケット処理エラー: {:?}", e),
+                    }
                 }
                 Ok::<(), MonitorError>(())
             }
