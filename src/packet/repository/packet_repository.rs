@@ -3,7 +3,6 @@ use crate::packet::types::PacketData;
 use crate::packet::Packet;
 use chrono::{DateTime, Utc};
 use log::info;
-use std::net::IpAddr;
 use std::time::Instant;
 use tokio_postgres::types::ToSql;
 
