@@ -40,7 +40,7 @@ impl PacketReader {
                     debug!("最後のパケットのタイムスタンプ: {:?}", packet.timestamp);
                     *last_ts = Some(packet.timestamp);
                 } else {
-                    warn!("パケットが受信されませんでした。最終タイムスタンプを現在時刻に設定します。");
+                    debug!("パケットが受信されませんでした。最終タイムスタンプを現在時刻に設定します。");
                     *last_ts = Some(current_time);
                 }
 
