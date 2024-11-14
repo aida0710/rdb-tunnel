@@ -1,6 +1,6 @@
 use crate::packet::reader::error::PacketReaderError;
-use crate::packet::{Packet};
-use log::{debug, error, info, trace};
+use crate::packet::Packet;
+use log::{debug, error, trace};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface};
 
@@ -14,10 +14,13 @@ impl PacketSender {
         packet: &Packet,
     ) -> Result<(), PacketReaderError> {
         if packet.raw_packet.len() > Self::MAX_PACKET_SIZE {
-            debug!(
-                "パケットサイズが大きすぎるためスキップ: {} bytes",
-                packet.raw_packet.len()
-            );
+            debug!("パケットサイズが大きすぎるためスキップ: {} bytes", packet.raw_packet.len());
+            return Err(PacketReaderError::SendError(
+                format!("パケットサイズが制限を超えています: {} bytes (最大: {} bytes)",
+                        packet.raw_packet.len(),
+                        Self::MAX_PACKET_SIZE
+                )
+            ));
         }
 
         trace!("パケット送信中: {}: {} {}",
@@ -37,7 +40,7 @@ impl PacketSender {
 
         match tx.send_to(&*packet.raw_packet, None) {
             Some(Ok(_)) => {
-                info!("パケット送信完了: {:?}", packet);
+                trace!("パケット送信完了: {:?}", packet);
                 Ok(())
             }
             Some(Err(e)) => {
