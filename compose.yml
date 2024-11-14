@@ -1,5 +1,5 @@
 services:
-  rust-dev:
+  dev-run:
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,7 +10,7 @@ services:
     privileged: true
     command: [ "cargo", "run" ]
 
-  rust-test:
+  dev-test:
     build:
       context: .
       dockerfile: Dockerfile
