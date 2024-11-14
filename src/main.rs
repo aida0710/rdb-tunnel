@@ -36,15 +36,17 @@ async fn main() -> Result<(), InitProcessError> {
         .await
         .map_err(|e| InitProcessError::DatabaseConnectionError(e.to_string()))?;
 
-    // 仮想インターフェースのセットアップ
-    let virtual_interface = Iface::new(&config.network.tap_interface_name, Mode::Tap)
-        .map_err(|e| InitProcessError::VirtualInterfaceCreateError(e.to_string()))?;
-    info!("仮想NICの作成に成功しました: {}", virtual_interface.name());
+    if config.network.use_tap_interface {
+        // 仮想インターフェースのセットアップ
+        let virtual_interface = Iface::new(&config.network.tap_interface_name, Mode::Tap)
+            .map_err(|e| InitProcessError::VirtualInterfaceCreateError(e.to_string()))?;
+        info!("仮想NICの作成に成功しました: {}", virtual_interface.name());
 
-    setup_interface(
-        &config.network.tap_interface_name,
-        &format!("{}/{}", config.network.tap_ip, config.network.tap_mask),
-    ).await.map_err(|e| InitProcessError::VirtualInterfaceSetupError(e.to_string()))?;
+        setup_interface(
+            &config.network.tap_interface_name,
+            &format!("{}/{}", config.network.tap_ip, config.network.tap_mask),
+        ).await.map_err(|e| InitProcessError::VirtualInterfaceSetupError(e.to_string()))?;
+    }
 
     // ネットワークインターフェースの選択
     let interface = select_interface(config.network.docker_mode, &config.network.docker_interface_name)
