@@ -1,3 +1,5 @@
+use crate::packet::analysis::duplicate_tracker::{PacketIdentifier, PacketTracker};
+use crate::packet::analysis::error::PacketAnalysisError;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
@@ -6,11 +8,8 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{debug, trace};
+use log::trace;
 use std::net::{IpAddr, Ipv4Addr};
-use crate::packet::analysis::duplicate_tracker::{PacketIdentifier, PacketTracker};
-use crate::packet::analysis::error::PacketAnalysisError;
-use crate::packet::analysis::ttl_processor::TtlProcessor;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -40,14 +39,12 @@ lazy_static! {
 
 pub struct PacketAnalyzer {
     tracker: PacketTracker,
-    ttl_processor: TtlProcessor,
 }
 
 impl PacketAnalyzer {
     pub fn new() -> Self {
         Self {
             tracker: PacketTracker::new(),
-            ttl_processor: TtlProcessor::new(),
         }
     }
 
@@ -63,16 +60,7 @@ impl PacketAnalyzer {
             None => return AnalyzeResult::Reject,
         };
 
-        // IPヘッダーの解析とTTLチェック
-        let ip_header_offset = 14;
-        let ttl = ethernet_frame[ip_header_offset + 8];
-
-        if !self.ttl_processor.is_valid_ttl(ttl) {
-            trace!("TTLが低すぎるパケットを破棄: TTL={}", ttl);
-            return AnalyzeResult::Reject;
-        }
-
-        // IPパケットの詳細な解析
+        // IPパケットの解析
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
             Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
 
@@ -107,12 +95,6 @@ impl PacketAnalyzer {
         // キャッシュのクリーンアップ
         self.tracker.cleanup_if_needed().await;
 
-        // 新しいパケットの作成（TTLを減少させる）
-        let mut new_packet = ethernet_frame.to_vec();
-        self.ttl_processor.process_packet(&mut new_packet, ip_header_offset);
-
-        debug!("パケット処理完了: TTL={} -> {}", ttl, ttl - 1);
-
         AnalyzeResult::Accept(PacketData {
             src_mac: ethernet_header.src_mac,
             dst_mac: ethernet_header.dst_mac,
@@ -123,8 +105,8 @@ impl PacketAnalyzer {
             dst_port: dst_port as i32,
             ip_protocol,
             timestamp: Utc::now(),
-            data: new_packet[payload_offset..].to_vec(),
-            raw_packet: new_packet,
+            data: ethernet_frame[payload_offset..].to_vec(),
+            raw_packet: ethernet_frame.to_vec(),
         })
     }
 
