@@ -1,6 +1,9 @@
 use crate::config::error::ConfigError;
+use crate::config::idps::{
+    DetectionRules, FTPViolation, FragmentViolation, ICMPViolation, IDPSConfig, IPHeaderViolation,
+    IPOptionViolation, TCPViolation, UDPViolation,
+};
 use dotenv::dotenv;
-use crate::config::idps::{DetectionRules, FTPViolation, FragmentViolation, ICMPViolation, IDPSConfig, IPHeaderViolation, IPOptionViolation, TCPViolation, UDPViolation};
 
 #[derive(Debug, Clone)]
 pub struct DatabaseConfig {
@@ -41,28 +44,41 @@ impl AppConfig {
         dotenv().map_err(|e| ConfigError::EnvFileReadError(e.to_string()))?;
 
         let get_env_var = |var_name: &str| -> Result<String, ConfigError> {
-            dotenv::var(var_name).map_err(|e| ConfigError::EnvVarError(format!("{}: {}", var_name, e.to_string())))
+            dotenv::var(var_name)
+                .map_err(|e| ConfigError::EnvVarError(format!("{}: {}", var_name, e.to_string())))
         };
 
         Ok(Self {
             database: DatabaseConfig {
                 host: get_env_var("TIMESCALE_DB_HOST")?,
-                port: get_env_var("TIMESCALE_DB_PORT")?.parse::<u16>()
-                    .map_err(|e| ConfigError::EnvVarParseError(format!("TIMESCALE_DB_PORT: {}", e.to_string())))?,
+                port: get_env_var("TIMESCALE_DB_PORT")?
+                    .parse::<u16>()
+                    .map_err(|e| {
+                        ConfigError::EnvVarParseError(format!(
+                            "TIMESCALE_DB_PORT: {}",
+                            e.to_string()
+                        ))
+                    })?,
                 user: get_env_var("TIMESCALE_DB_USER")?,
                 password: get_env_var("TIMESCALE_DB_PASSWORD")?,
                 database: get_env_var("TIMESCALE_DB_DATABASE")?,
             },
             network: NetworkConfig {
-                use_tap_interface: dotenv::var("USE_TAP_INTERFACE").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                use_tap_interface: dotenv::var("USE_TAP_INTERFACE")
+                    .map(|v| v.to_lowercase() == "true")
+                    .unwrap_or(false),
                 tap_ip: get_env_var("TAP_IP")?,
                 tap_mask: get_env_var("TAP_MASK")?,
                 tap_interface_name: get_env_var("TAP_INTERFACE_NAME")?,
-                docker_mode: dotenv::var("DOCKER_MODE").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                docker_mode: dotenv::var("DOCKER_MODE")
+                    .map(|v| v.to_lowercase() == "true")
+                    .unwrap_or(false),
                 docker_interface_name: get_env_var("DOCKER_INTERFACE_NAME")?,
             },
             idps: IDPSConfig {
-                enabled: dotenv::var("IDS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                enabled: dotenv::var("IDS_ENABLED")
+                    .map(|v| v.to_lowercase() == "true")
+                    .unwrap_or(false),
                 rules: DetectionRules {
                     ip_header: vec![
                         IPHeaderViolation::UnknownProtocol,
@@ -94,26 +110,23 @@ impl AppConfig {
                         ICMPViolation::MaskReply,
                         ICMPViolation::TooLarge,
                     ],
-                    udp: vec![
-                        UDPViolation::ShortHeader,
-                        UDPViolation::Bomb,
-                    ],
+                    udp: vec![UDPViolation::ShortHeader, UDPViolation::Bomb],
                     tcp: vec![
                         TCPViolation::NoBitsSet,
                         TCPViolation::SynAndFin,
                         TCPViolation::FinNoAck,
                     ],
-                    ftp: vec![
-                        FTPViolation::ImproperPort,
-                    ],
+                    ftp: vec![FTPViolation::ImproperPort],
                 },
-                block_violations: dotenv::var("IPS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
+                block_violations: dotenv::var("IPS_ENABLED")
+                    .map(|v| v.to_lowercase() == "true")
+                    .unwrap_or(false),
             },
             logger_config: LoggerConfig {
                 normal_logger_file: get_env_var("NORMAL_LOGGER_FILE")?,
                 idps_logger_file: get_env_var("IDPS_LOGGER_FILE")?,
                 idps_log_mode: get_env_var("IDPS_LOG_MODE")?,
-            }
+            },
         })
     }
 }

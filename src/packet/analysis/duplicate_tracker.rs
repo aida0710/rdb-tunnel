@@ -3,10 +3,9 @@ use log::{debug, info, trace};
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::Mutex;
 
-const MAX_CACHE_SIZE: usize = 10000;
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
@@ -17,22 +16,6 @@ pub struct PacketIdentifier {
     dst_port: u16,
     protocol: u8,
     timestamp: u64,
-}
-
-impl PacketIdentifier {
-    pub fn new(src_ip: IpAddr, dst_ip: IpAddr, protocol: u8, src_port: u16, dst_port: u16) -> Self {
-        Self {
-            src_ip,
-            dst_ip,
-            protocol,
-            src_port,
-            dst_port,
-            timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        }
-    }
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
@@ -125,7 +108,7 @@ impl PacketTracker {
                     info.detect_count += 1; // カウントを増やす
                     debug!(
                         "完全一致パケットを検出（ループの可能性）: 検出回数={}回目 タイプ={:?} プロトコル={} 長さ={} 初回検出からの経過={}ms 送信元MAC={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x} 宛先MAC={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-                        info.detect_count,　info.ether_type, info.protocol, info.length,
+                        info.detect_count, info.ether_type, info.protocol, info.length,
                         now.duration_since(info.first_detection).as_millis(),
                         info.src_mac[0], info.src_mac[1], info.src_mac[2],
                         info.src_mac[3], info.src_mac[4], info.src_mac[5],
@@ -180,7 +163,10 @@ impl PacketTracker {
 
             info!(
                 "キャッシュクリーンアップ実行: 通常パケット {}→{}, ブロードキャスト {}→{}",
-                raw_count, recent_raws.len(), broadcast_count, broadcast_packets.len()
+                raw_count,
+                recent_raws.len(),
+                broadcast_count,
+                broadcast_packets.len()
             );
 
             *last_cleanup = now;

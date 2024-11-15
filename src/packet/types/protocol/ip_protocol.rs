@@ -31,12 +31,12 @@ impl IpProtocol {
 
     /// TCPまたはUDPかどうかを判定
     pub fn is_transport_protocol(&self) -> bool {
-        matches!(self.0, 6 | 17)  // TCP or UDP
+        matches!(self.0, 6 | 17) // TCP or UDP
     }
 
     /// ICMPかどうかを判定
     pub fn is_icmp(&self) -> bool {
-        matches!(self.0, 1 | 58)  // ICMP or ICMPv6
+        matches!(self.0, 1 | 58) // ICMP or ICMPv6
     }
 }
 

@@ -1,5 +1,5 @@
-use std::time::Instant;
 use std::future::Future;
+use std::time::Instant;
 
 pub async fn measure_time_async<Fut>(process_name: &str, future: Fut) -> Fut::Output
 where

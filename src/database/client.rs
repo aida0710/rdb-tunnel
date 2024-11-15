@@ -5,8 +5,16 @@ use tokio_postgres::Row;
 
 #[async_trait]
 pub trait ExecuteQuery {
-    async fn execute(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<u64, DatabaseError>;
-    async fn query(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<Vec<Row>, DatabaseError>;
+    async fn execute(
+        &self,
+        query: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<u64, DatabaseError>;
+    async fn query(
+        &self,
+        query: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<Vec<Row>, DatabaseError>;
 }
 
 pub struct Database;
@@ -33,19 +41,49 @@ impl Database {
 
 #[async_trait]
 impl ExecuteQuery for Database {
-    async fn execute(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<u64, DatabaseError> {
-        let pool = DatabasePool::get_pool().map_err(|e| DatabaseError::PoolRetrievalError(e.to_string()))?;
-        let client = pool.inner().get().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let stmt = client.prepare(query).await.map_err(|e| DatabaseError::QueryPreparationError(e.to_string()))?;
-        let result = client.execute(&stmt, params).await.map_err(|e| DatabaseError::QueryExecutionError(e.to_string()))?;
+    async fn execute(
+        &self,
+        query: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<u64, DatabaseError> {
+        let pool = DatabasePool::get_pool()
+            .map_err(|e| DatabaseError::PoolRetrievalError(e.to_string()))?;
+        let client = pool
+            .inner()
+            .get()
+            .await
+            .map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let stmt = client
+            .prepare(query)
+            .await
+            .map_err(|e| DatabaseError::QueryPreparationError(e.to_string()))?;
+        let result = client
+            .execute(&stmt, params)
+            .await
+            .map_err(|e| DatabaseError::QueryExecutionError(e.to_string()))?;
         Ok(result)
     }
 
-    async fn query(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<Vec<Row>, DatabaseError> {
-        let pool = DatabasePool::get_pool().map_err(|e| DatabaseError::PoolRetrievalError(e.to_string()))?;
-        let client = pool.inner().get().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let stmt = client.prepare(query).await.map_err(|e| DatabaseError::QueryPreparationError(e.to_string()))?;
-        let rows = client.query(&stmt, params).await.map_err(|e| DatabaseError::QueryExecutionError(e.to_string()))?;
+    async fn query(
+        &self,
+        query: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<Vec<Row>, DatabaseError> {
+        let pool = DatabasePool::get_pool()
+            .map_err(|e| DatabaseError::PoolRetrievalError(e.to_string()))?;
+        let client = pool
+            .inner()
+            .get()
+            .await
+            .map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let stmt = client
+            .prepare(query)
+            .await
+            .map_err(|e| DatabaseError::QueryPreparationError(e.to_string()))?;
+        let rows = client
+            .query(&stmt, params)
+            .await
+            .map_err(|e| DatabaseError::QueryExecutionError(e.to_string()))?;
         Ok(rows)
     }
 }

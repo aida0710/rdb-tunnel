@@ -9,7 +9,9 @@ pub struct MacAddr(pub [u8; 6]);
 
 impl fmt::Display for MacAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mac_string = self.0.iter()
+        let mac_string = self
+            .0
+            .iter()
             .map(|b| format!("{:02x}", b))
             .collect::<Vec<_>>()
             .join(":");

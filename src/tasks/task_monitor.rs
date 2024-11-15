@@ -14,10 +14,7 @@ pub struct TaskMonitor {
 }
 
 impl TaskMonitor {
-    pub fn new(
-        task_state: Arc<Mutex<TaskState>>,
-        shutdown_timeout: Duration,
-    ) -> Self {
+    pub fn new(task_state: Arc<Mutex<TaskState>>, shutdown_timeout: Duration) -> Self {
         Self {
             task_state,
             shutdown_timeout,
@@ -32,9 +29,15 @@ impl TaskMonitor {
         mut shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(), TaskError> {
         // 初期状態の設定
-        self.update_task_state("ポーリング", true).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("ライター", true).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("分析", true).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("ポーリング", true)
+            .await
+            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("ライター", true)
+            .await
+            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("分析", true)
+            .await
+            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
 
         let result = loop {
             tokio::select! {
@@ -67,9 +70,15 @@ impl TaskMonitor {
         };
 
         // タスクの状態をクリーンアップ
-        self.update_task_state("ポーリング", false).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("ライター", false).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("分析", false).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("ポーリング", false)
+            .await
+            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("ライター", false)
+            .await
+            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("分析", false)
+            .await
+            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
 
         result
     }
@@ -89,11 +98,17 @@ impl TaskMonitor {
             }
             Ok(Err(e)) => {
                 error!("{}タスクがエラーで終了: {}", task_name, e);
-                Err(TaskError::ExecutionError(format!("{}エラー: {}", task_name, e)))
+                Err(TaskError::ExecutionError(format!(
+                    "{}エラー: {}",
+                    task_name, e
+                )))
             }
             Err(e) => {
                 error!("{}タスクがパニックで終了: {}", task_name, e);
-                Err(TaskError::PanicError(format!("{}タスクがパニックで終了", task_name)))
+                Err(TaskError::PanicError(format!(
+                    "{}タスクがパニックで終了",
+                    task_name
+                )))
             }
         }
     }
@@ -111,7 +126,9 @@ impl TaskMonitor {
         }
 
         error!("タスクのシャットダウンがタイムアウトしました");
-        Err(TaskError::TimeoutError("シャットダウンタイムアウト".to_string()))
+        Err(TaskError::TimeoutError(
+            "シャットダウンタイムアウト".to_string(),
+        ))
     }
 
     pub async fn update_task_state(&self, task_name: &str, active: bool) -> Result<(), TaskError> {
@@ -120,9 +137,12 @@ impl TaskMonitor {
             "ポーリング" => state.polling_active = active,
             "ライター" => state.writer_active = active,
             "分析" => state.analysis_active = active,
-            _ => return Err(TaskError::StateUpdateError(
-                format!("不明なタスク名: {}", task_name)
-            )),
+            _ => {
+                return Err(TaskError::StateUpdateError(format!(
+                    "不明なタスク名: {}",
+                    task_name
+                )))
+            }
         }
         Ok(())
     }

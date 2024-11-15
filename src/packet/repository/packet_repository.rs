@@ -58,8 +58,16 @@ impl PacketRepository {
             .map(|i| {
                 format!(
                     "(${},${},${},${},${},${},${},${},${},${},${})",
-                    i * 11 + 1, i * 11 + 2, i * 11 + 3, i * 11 + 4, i * 11 + 5,
-                    i * 11 + 6, i * 11 + 7, i * 11 + 8, i * 11 + 9, i * 11 + 10,
+                    i * 11 + 1,
+                    i * 11 + 2,
+                    i * 11 + 3,
+                    i * 11 + 4,
+                    i * 11 + 5,
+                    i * 11 + 6,
+                    i * 11 + 7,
+                    i * 11 + 8,
+                    i * 11 + 9,
+                    i * 11 + 10,
                     i * 11 + 11
                 )
             })
@@ -86,38 +94,44 @@ impl PacketRepository {
             (
                 "SELECT * FROM packets
                 WHERE timestamp >= NOW() - INTERVAL '30 seconds'
-                ORDER BY timestamp ASC".to_string(),
-                vec![]
+                ORDER BY timestamp ASC"
+                    .to_string(),
+                vec![],
             )
         } else if let Some(ts) = last_timestamp {
             (
                 "SELECT * FROM packets
                 WHERE timestamp > $1
-                ORDER BY timestamp ASC".to_string(),
-                vec![ts]
+                ORDER BY timestamp ASC"
+                    .to_string(),
+                vec![ts],
             )
         } else {
             (
                 "SELECT * FROM packets
                 WHERE timestamp >= NOW() - INTERVAL '5 seconds'
-                ORDER BY timestamp ASC".to_string(),
-                vec![]
+                ORDER BY timestamp ASC"
+                    .to_string(),
+                vec![],
             )
         };
 
         let rows = db.query(&query, &params).await?;
-        Ok(rows.into_iter().map(|row| Packet {
-            src_mac: row.get("src_mac"),
-            dst_mac: row.get("dst_mac"),
-            ether_type: row.get("ether_type"),
-            src_ip: row.get("src_ip"),
-            dst_ip: row.get("dst_ip"),
-            src_port: row.get("src_port"),
-            dst_port: row.get("dst_port"),
-            ip_protocol: row.get("ip_protocol"),
-            timestamp: row.get("timestamp"),
-            data: row.get("data"),
-            raw_packet: row.get("raw_packet"),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|row| Packet {
+                src_mac: row.get("src_mac"),
+                dst_mac: row.get("dst_mac"),
+                ether_type: row.get("ether_type"),
+                src_ip: row.get("src_ip"),
+                dst_ip: row.get("dst_ip"),
+                src_port: row.get("src_port"),
+                dst_port: row.get("dst_port"),
+                ip_protocol: row.get("ip_protocol"),
+                timestamp: row.get("timestamp"),
+                data: row.get("data"),
+                raw_packet: row.get("raw_packet"),
+            })
+            .collect())
     }
 }

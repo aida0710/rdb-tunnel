@@ -1,6 +1,6 @@
+use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::MacAddr;
 use std::net::IpAddr;
-use crate::packet::types::{EtherType, IpProtocol};
 
 #[derive(Debug)]
 pub struct FirewallPacket {

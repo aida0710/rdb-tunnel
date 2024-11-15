@@ -1,6 +1,6 @@
 mod client;
-mod pool;
 mod error;
+mod pool;
 
 pub use client::Database;
 pub use error::DatabaseError;

@@ -21,7 +21,10 @@ impl InterfaceHandler {
             Err(e) => return Err(MonitorError::NetworkError(e.to_string())),
         };
 
-        info!("インターフェース {} でパケット受信を開始", self.interface.name);
+        info!(
+            "インターフェース {} でパケット受信を開始",
+            self.interface.name
+        );
         let writer = Arc::new(PacketWriter::default());
 
         // パケット処理用のチャネルを作成
@@ -72,11 +75,13 @@ impl InterfaceHandler {
         }
     }
 
-    async fn process_packet(writer: &PacketWriter, ethernet_data: &[u8]) -> Result<(), MonitorError> {
-        writer.process_packet(ethernet_data).await
-            .map_err(|e| {
-                error!("パケット処理中にエラーが発生しました: {}", e);
-                MonitorError::ProcessingError(e.to_string())
-            })
+    async fn process_packet(
+        writer: &PacketWriter,
+        ethernet_data: &[u8],
+    ) -> Result<(), MonitorError> {
+        writer.process_packet(ethernet_data).await.map_err(|e| {
+            error!("パケット処理中にエラーが発生しました: {}", e);
+            MonitorError::ProcessingError(e.to_string())
+        })
     }
 }

@@ -2,7 +2,7 @@ use crate::packet::reader::error::PacketReaderError;
 use crate::packet::reader::packet_sender::PacketSender;
 use crate::packet::repository::PacketRepository;
 use crate::packet::Packet;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, trace};
 use pnet::datalink::NetworkInterface;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -49,7 +49,10 @@ impl PacketReader {
                     info!("初回ポーリングが完了しました。フラグを更新します。");
                 }
 
-                debug!("パケットのポーリングが完了しました。トータルパケット数: {}", packets.len());
+                debug!(
+                    "パケットのポーリングが完了しました。トータルパケット数: {}",
+                    packets.len()
+                );
                 Ok(packets)
             }
             Err(e) => {
@@ -77,7 +80,11 @@ impl PacketReader {
 
                 let sent = self.packets_sent.load(Ordering::SeqCst);
                 let failed = self.packets_failed.load(Ordering::SeqCst);
-                trace!("パケット処理が完了しました - 成功: {}, 失敗: {}", sent, failed);
+                trace!(
+                    "パケット処理が完了しました - 成功: {}, 失敗: {}",
+                    sent,
+                    failed
+                );
 
                 self.packets_sent.store(0, Ordering::SeqCst);
                 self.packets_failed.store(0, Ordering::SeqCst);
@@ -86,7 +93,10 @@ impl PacketReader {
                 Ok(())
             }
             Err(e) => {
-                error!("パケットのポーリングと送信中にエラーが発生しました: {:?}", e);
+                error!(
+                    "パケットのポーリングと送信中にエラーが発生しました: {:?}",
+                    e
+                );
                 Err(PacketReaderError::PollingAndSendingError(e.to_string()))
             }
         }
@@ -94,7 +104,8 @@ impl PacketReader {
 }
 
 pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketReaderError> {
-    let my_ip = interface.ips
+    let my_ip = interface
+        .ips
         .iter()
         .find(|ip| ip.is_ipv4())
         .map(|ip| ip.ip())

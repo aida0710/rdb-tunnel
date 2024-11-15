@@ -23,5 +23,5 @@ pub enum MonitorError {
     InterfaceNotFound(String),
 
     #[error("設定エラー: {0}")]
-    ConfigurationError(String)
+    ConfigurationError(String),
 }

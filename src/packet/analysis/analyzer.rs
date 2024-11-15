@@ -1,6 +1,5 @@
 use crate::idps_log;
 use crate::packet::analysis::duplicate_tracker::PacketTracker;
-use crate::packet::analysis::error::PacketAnalysisError;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
@@ -23,7 +22,6 @@ pub struct IpHeader {
 pub enum AnalyzeResult {
     Accept(PacketData),
     Reject,
-    Error(PacketAnalysisError),
 }
 
 lazy_static! {
@@ -54,8 +52,13 @@ impl PacketAnalyzer {
 
     pub async fn analyze_packet(&self, ethernet_frame: &[u8]) -> AnalyzeResult {
         // 基本的な長さチェック
-        if ethernet_frame.len() < 14 + 20 { // Ethernet + 最小IP header
-            idps_log!("パケットが短すぎます: パケット長={}、期待値={}", ethernet_frame.len(), 14 + 20);
+        if ethernet_frame.len() < 14 + 20 {
+            // Ethernet + 最小IP header
+            idps_log!(
+                "パケットが短すぎます: パケット長={}、期待値={}",
+                ethernet_frame.len(),
+                14 + 20
+            );
             return AnalyzeResult::Reject;
         }
 
@@ -73,7 +76,11 @@ impl PacketAnalyzer {
             };
 
         // 重複チェック
-        if self.tracker.is_duplicate(ethernet_frame, ethernet_header.ether_type).await {
+        if self
+            .tracker
+            .is_duplicate(ethernet_frame, ethernet_header.ether_type)
+            .await
+        {
             return AnalyzeResult::Reject;
         }
 
@@ -90,9 +97,12 @@ impl PacketAnalyzer {
         );
 
         if !FIREWALL.check(&firewall_packet) {
-            trace!("Firewallによりバッファ追加が禁止: {}:{} -> {}:{}",
-                firewall_packet.src_ip, firewall_packet.src_port,
-                firewall_packet.dst_ip, firewall_packet.dst_port
+            trace!(
+                "Firewallによりバッファ追加が禁止: {}:{} -> {}:{}",
+                firewall_packet.src_ip,
+                firewall_packet.src_port,
+                firewall_packet.dst_ip,
+                firewall_packet.dst_port
             );
             return AnalyzeResult::Reject;
         }
@@ -155,12 +165,16 @@ impl PacketAnalyzer {
                 if ethernet_frame.len() >= 42 {
                     // ARPパケットの最小長
                     src_ip = IpAddr::V4(Ipv4Addr::new(
-                        ethernet_frame[28], ethernet_frame[29],
-                        ethernet_frame[30], ethernet_frame[31],
+                        ethernet_frame[28],
+                        ethernet_frame[29],
+                        ethernet_frame[30],
+                        ethernet_frame[31],
                     ));
                     dst_ip = IpAddr::V4(Ipv4Addr::new(
-                        ethernet_frame[38], ethernet_frame[39],
-                        ethernet_frame[40], ethernet_frame[41],
+                        ethernet_frame[38],
+                        ethernet_frame[39],
+                        ethernet_frame[40],
+                        ethernet_frame[41],
                     ));
                 } else {
                     idps_log!(

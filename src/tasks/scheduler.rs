@@ -32,21 +32,20 @@ impl TaskScheduler {
     pub async fn run(&self) -> Result<(), TaskError> {
         info!("タスクスケジューラを開始します");
 
-        let monitor = TaskMonitor::new(
-            self.task_state.clone(),
-            SHUTDOWN_TIMEOUT,
-        );
+        let monitor = TaskMonitor::new(self.task_state.clone(), SHUTDOWN_TIMEOUT);
 
         let polling_handle = self.spawn_polling_task();
         let writer_handle = self.spawn_writer_task();
         let analysis_handle = self.spawn_analysis_task();
 
-        monitor.monitor_tasks(
-            polling_handle,
-            writer_handle,
-            analysis_handle,
-            self.shutdown_tx.subscribe(),
-        ).await
+        monitor
+            .monitor_tasks(
+                polling_handle,
+                writer_handle,
+                analysis_handle,
+                self.shutdown_tx.subscribe(),
+            )
+            .await
     }
 
     fn spawn_polling_task(&self) -> JoinHandle<Result<(), String>> {

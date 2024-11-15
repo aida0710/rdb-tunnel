@@ -51,7 +51,10 @@ pub async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeRes
         6 => {
             // IPv6ヘッダは40バイト固定
             if data.len() < 40 {
-                idps_log!("IPv6ヘッダが短すぎます: {} バイト < 必要な40バイト", data.len());
+                idps_log!(
+                    "IPv6ヘッダが短すぎます: {} バイト < 必要な40バイト",
+                    data.len()
+                );
                 return Err(AnalyzeResult::Reject);
             }
 

@@ -62,7 +62,6 @@ impl PacketWriter {
                 trace!("パケットが拒否されました");
                 Ok(())
             }
-            AnalyzeResult::Error(e) => Err(WriterError::PacketParsingError(e.to_string())),
         }
     }
 }

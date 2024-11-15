@@ -1,10 +1,10 @@
+mod config;
 mod database;
 mod error;
-mod config;
-mod tasks;
-mod packet;
 mod interface;
 mod logger;
+mod packet;
+mod tasks;
 mod utils;
 
 use crate::config::AppConfig;
@@ -19,11 +19,11 @@ use tun_tap::{Iface, Mode};
 #[tokio::main]
 async fn main() -> Result<(), InitProcessError> {
     // 設定の読み込み
-    let config: AppConfig = AppConfig::new().map_err(|e| InitProcessError::ConfigurationError(e.to_string()))?;
+    let config: AppConfig =
+        AppConfig::new().map_err(|e| InitProcessError::ConfigurationError(e.to_string()))?;
 
     // ロガーのセットアップ
     setup_logger(config.logger_config).map_err(|e| InitProcessError::LoggerError(e.to_string()))?;
-
 
     // データベース接続
     Database::connect(
@@ -33,8 +33,8 @@ async fn main() -> Result<(), InitProcessError> {
         &config.database.password,
         &config.database.database,
     )
-        .await
-        .map_err(|e| InitProcessError::DatabaseConnectionError(e.to_string()))?;
+    .await
+    .map_err(|e| InitProcessError::DatabaseConnectionError(e.to_string()))?;
 
     if config.network.use_tap_interface {
         // 仮想インターフェースのセットアップ
@@ -45,17 +45,26 @@ async fn main() -> Result<(), InitProcessError> {
         setup_interface(
             &config.network.tap_interface_name,
             &format!("{}/{}", config.network.tap_ip, config.network.tap_mask),
-        ).await.map_err(|e| InitProcessError::VirtualInterfaceSetupError(e.to_string()))?;
+        )
+        .await
+        .map_err(|e| InitProcessError::VirtualInterfaceSetupError(e.to_string()))?;
     }
 
     // ネットワークインターフェースの選択
-    let interface = select_interface(config.network.docker_mode, &config.network.docker_interface_name)
-        .map_err(|e| InitProcessError::InterfaceSelectionError(e.to_string()))?;
+    let interface = select_interface(
+        config.network.docker_mode,
+        &config.network.docker_interface_name,
+    )
+    .map_err(|e| InitProcessError::InterfaceSelectionError(e.to_string()))?;
     info!("デバイスの選択に成功しました: {}", interface.name);
 
     // タスクスケジューラの起動
     let scheduler = TaskScheduler::new(interface);
-    if let Err(e) = scheduler.run().await.map_err(|e| InitProcessError::TaskExecutionProcessError(e.to_string())) {
+    if let Err(e) = scheduler
+        .run()
+        .await
+        .map_err(|e| InitProcessError::TaskExecutionProcessError(e.to_string()))
+    {
         error!("タスクの実行処理に失敗しました: {:?}", e);
         std::process::exit(1);
     }

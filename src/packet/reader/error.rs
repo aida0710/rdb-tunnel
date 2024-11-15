@@ -12,9 +12,6 @@ pub enum PacketReaderError {
     #[error("ポーリングとパケット送信中にエラーが発生しました: {0}")]
     PollingAndSendingError(String),
 
-    #[error("パケット処理中に予期せぬエラーが発生: {0}")]
-    InjectPacketUnexpectedError(String),
-
     #[error("ネットワークエラー: {0}")]
     NetworkError(String),
 

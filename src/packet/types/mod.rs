@@ -1,6 +1,6 @@
+mod inet_addr;
 mod mac_addr;
 mod packet;
-mod inet_addr;
 mod protocol;
 
 pub use inet_addr::InetAddr;

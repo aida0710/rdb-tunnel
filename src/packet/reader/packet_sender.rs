@@ -14,16 +14,19 @@ impl PacketSender {
         packet: &Packet,
     ) -> Result<(), PacketReaderError> {
         if packet.raw_packet.len() > Self::MAX_PACKET_SIZE {
-            debug!("パケットサイズが大きすぎるためスキップ: {} bytes", packet.raw_packet.len());
-            return Err(PacketReaderError::SendError(
-                format!("パケットサイズが制限を超えています: {} bytes (最大: {} bytes)",
-                        packet.raw_packet.len(),
-                        Self::MAX_PACKET_SIZE
-                )
-            ));
+            debug!(
+                "パケットサイズが大きすぎるためスキップ: {} bytes",
+                packet.raw_packet.len()
+            );
+            return Err(PacketReaderError::SendError(format!(
+                "パケットサイズが制限を超えています: {} bytes (最大: {} bytes)",
+                packet.raw_packet.len(),
+                Self::MAX_PACKET_SIZE
+            )));
         }
 
-        trace!("パケット送信中: {}: {} {}",
+        trace!(
+            "パケット送信中: {}: {} {}",
             packet.timestamp,
             packet.src_ip,
             packet.dst_ip
@@ -49,7 +52,9 @@ impl PacketSender {
             }
             None => {
                 error!("宛先が指定されていないためスキップ");
-                Err(PacketReaderError::SendError("宛先が指定されていません".to_string()))
+                Err(PacketReaderError::SendError(
+                    "宛先が指定されていません".to_string(),
+                ))
             }
         }
     }

@@ -22,5 +22,4 @@ pub enum InitProcessError {
 
     #[error("タスクの実行処理に失敗しました: {0}")]
     TaskExecutionProcessError(String),
-
 }
