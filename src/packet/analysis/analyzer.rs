@@ -1,4 +1,5 @@
-use crate::packet::analysis::duplicate_tracker::{PacketIdentifier, PacketTracker};
+use crate::idps_log;
+use crate::packet::analysis::duplicate_tracker::PacketTracker;
 use crate::packet::analysis::error::PacketAnalysisError;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
@@ -28,7 +29,10 @@ pub enum AnalyzeResult {
 lazy_static! {
     static ref FIREWALL: IpFirewall = {
         let mut fw = IpFirewall::new(Policy::Blacklist);
-        fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
+        fw.add_rule(
+            Filter::DstIpAddress("160.251.175.134".parse().unwrap()),
+            100,
+        );
         fw.add_rule(Filter::DstPort(5432), 95);
         fw.add_rule(Filter::SrcPort(5432), 90);
         fw.add_rule(Filter::DstPort(2222), 85);
@@ -50,7 +54,8 @@ impl PacketAnalyzer {
 
     pub async fn analyze_packet(&self, ethernet_frame: &[u8]) -> AnalyzeResult {
         // 基本的な長さチェック
-        if ethernet_frame.len() < 14 + 20 {  // Ethernet + 最小IP header
+        if ethernet_frame.len() < 14 + 20 { // Ethernet + 最小IP header
+            idps_log!("パケットが短すぎます: パケット長={}、期待値={}", ethernet_frame.len(), 14 + 20);
             return AnalyzeResult::Reject;
         }
 
@@ -62,13 +67,13 @@ impl PacketAnalyzer {
 
         // IPパケットの解析
         let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
-            Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await;
+            match Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
+                Ok(result) => result,
+                Err(e) => return e,
+            };
 
         // 重複チェック
-        let identifier = PacketIdentifier::new(src_ip, dst_ip, ip_protocol.value(), src_port, dst_port);
-        if self.tracker.is_duplicate(&identifier).await {
-            trace!("重複パケットを検出: src={}:{}, dst={}:{}",
-                src_ip, src_port, dst_ip, dst_port);
+        if self.tracker.is_duplicate(ethernet_frame, ethernet_header.ether_type).await {
             return AnalyzeResult::Reject;
         }
 
@@ -113,7 +118,7 @@ impl PacketAnalyzer {
     async fn parse_ip_packet(
         ethernet_frame: &[u8],
         ether_type: EtherType,
-    ) -> (IpAddr, IpAddr, IpProtocol, u16, u16, usize) {
+    ) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16, usize), AnalyzeResult> {
         let mut src_ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
         let mut dst_ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
         let mut src_port = 0u16;
@@ -125,8 +130,8 @@ impl PacketAnalyzer {
         let ip_data = &ethernet_frame[14..];
 
         match ether_type {
-            EtherType::IP_V4 | EtherType::IP_V6 => {
-                if let Some(ip_header) = parse_ip_header(ip_data).await {
+            EtherType::IP_V4 | EtherType::IP_V6 => match parse_ip_header(ip_data).await {
+                Ok(Some(ip_header)) => {
                     src_ip = ip_header.src_ip;
                     dst_ip = ip_header.dst_ip;
                     ip_protocol = ip_header.ip_protocol;
@@ -137,9 +142,18 @@ impl PacketAnalyzer {
                         dst_port = transport_header.dst_port;
                     }
                 }
-            }
+                Err(_e) => {
+                    idps_log!("IPヘッダーの解析に失敗しました: タイプ={:?}", ether_type);
+                    return Err(AnalyzeResult::Reject);
+                }
+                _ => {
+                    idps_log!("IPヘッダーが見つかりませんでした");
+                    return Err(AnalyzeResult::Reject);
+                }
+            },
             EtherType::ARP => {
-                if ethernet_frame.len() >= 42 { // ARPパケットの最小長
+                if ethernet_frame.len() >= 42 {
+                    // ARPパケットの最小長
                     src_ip = IpAddr::V4(Ipv4Addr::new(
                         ethernet_frame[28], ethernet_frame[29],
                         ethernet_frame[30], ethernet_frame[31],
@@ -148,11 +162,24 @@ impl PacketAnalyzer {
                         ethernet_frame[38], ethernet_frame[39],
                         ethernet_frame[40], ethernet_frame[41],
                     ));
+                } else {
+                    idps_log!(
+                        "ARPパケットが短すぎます: パケット長={}、期待値=42",
+                        ethernet_frame.len()
+                    );
+                    return Err(AnalyzeResult::Reject);
                 }
             }
             _ => {}
         }
 
-        (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset)
+        Ok((
+            src_ip,
+            dst_ip,
+            ip_protocol,
+            src_port,
+            dst_port,
+            payload_offset,
+        ))
     }
 }
