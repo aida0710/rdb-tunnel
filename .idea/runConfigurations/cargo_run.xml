@@ -5,7 +5,7 @@
         <option name="envFilePath" value="" />
         <option name="services">
           <list>
-            <option value="rust-dev" />
+            <option value="dev-run" />
           </list>
         </option>
         <option name="sourceFilePath" value="compose.yml" />
