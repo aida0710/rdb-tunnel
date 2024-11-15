@@ -17,10 +17,10 @@ impl DatabasePool {
         let manager = PostgresConnectionManager::new_from_stringlike(connection_string, NoTls)
             .map_err(DatabaseError::ConnectionManagerError)?;
         let pool = Pool::builder()
-            .max_size(50)
-            .min_idle(Some(8))
-            .connection_timeout(Duration::from_secs(5))
-            .idle_timeout(Some(Duration::from_secs(60)))
+            .max_size(20)
+            .min_idle(Some(10))
+            .connection_timeout(Duration::from_secs(30))
+            .idle_timeout(Some(Duration::from_secs(300)))
             .max_lifetime(Some(Duration::from_secs(3600)))
             .build(manager)
             .await
