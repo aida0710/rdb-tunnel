@@ -73,35 +73,14 @@ impl PacketAnalyzer {
                 Err(e) => return e,
             };
 
-        // 重複チェック
-        if self
-            .tracker
-            .is_duplicate(ethernet_frame, ethernet_header.ether_type)
-            .await
-        {
+        // Firewallチェック
+        let firewall_packet = FirewallPacket::from_packet(ethernet_header.src_mac.clone(), ethernet_header.dst_mac.clone(), ethernet_header.ether_type, src_ip, dst_ip, ip_protocol, src_port, dst_port);
+        if !FIREWALL.check(&firewall_packet) {
             return AnalyzeResult::Reject;
         }
 
-        // Firewallチェック
-        let firewall_packet = FirewallPacket::from_packet(
-            ethernet_header.src_mac.clone(),
-            ethernet_header.dst_mac.clone(),
-            ethernet_header.ether_type,
-            src_ip,
-            dst_ip,
-            ip_protocol,
-            src_port,
-            dst_port,
-        );
-
-        if !FIREWALL.check(&firewall_packet) {
-            trace!(
-                "Firewallによりバッファ追加が禁止: {}:{} -> {}:{}",
-                firewall_packet.src_ip,
-                firewall_packet.src_port,
-                firewall_packet.dst_ip,
-                firewall_packet.dst_port
-            );
+        // 重複チェック
+        if self.tracker.is_duplicate(ethernet_frame, ethernet_header.ether_type).await {
             return AnalyzeResult::Reject;
         }
 
