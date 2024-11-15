@@ -1,3 +1,5 @@
+use crate::idps_log;
+use crate::packet::analysis::AnalyzeResult;
 use crate::packet::types::IpProtocol;
 use rtnetlink::IpVersion;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -11,35 +13,46 @@ pub struct IpHeader {
     pub header_length: usize,
 }
 
-pub async fn parse_ip_header(data: &[u8]) -> Option<IpHeader> {
+pub async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeResult> {
     let version = (data[0] >> 4) & 0xF;
     match version {
         4 => {
-            if data.len() < 20 { // 最小IPv4ヘッダ長
-                return None;
+            if data.len() < 20 {
+                // 最小IPv4ヘッダ長
+                idps_log!(
+                    "IPv4ヘッダが短すぎます: {} バイト < 最小値20バイト",
+                    data.len()
+                );
+                return Err(AnalyzeResult::Reject);
             }
 
             let ihl = (data[0] & 0xF) as usize * 4; // IPヘッダ長
             if data.len() < ihl {
-                return None;
+                idps_log!(
+                    "IPv4パケット長がヘッダ長より短いです: {} バイト < 宣言値 {} バイト",
+                    data.len(),
+                    ihl
+                );
+                return Err(AnalyzeResult::Reject);
             }
 
             let ip_protocol = IpProtocol::from(data[9]); // プロトコルフィールド
             let src_ip = Ipv4Addr::new(data[12], data[13], data[14], data[15]);
             let dst_ip = Ipv4Addr::new(data[16], data[17], data[18], data[19]);
 
-            Some(IpHeader {
+            Ok(Some(IpHeader {
                 version: IpVersion::V4,
                 ip_protocol,
                 src_ip: IpAddr::V4(src_ip),
                 dst_ip: IpAddr::V4(dst_ip),
                 header_length: ihl,
-            })
+            }))
         }
         6 => {
             // IPv6ヘッダは40バイト固定
             if data.len() < 40 {
-                return None;
+                idps_log!("IPv6ヘッダが短すぎます: {} バイト < 必要な40バイト", data.len());
+                return Err(AnalyzeResult::Reject);
             }
 
             let ip_protocol = IpProtocol::from(data[6]); // Next Header
@@ -64,14 +77,17 @@ pub async fn parse_ip_header(data: &[u8]) -> Option<IpHeader> {
                 u16::from_be_bytes([data[38], data[39]]),
             );
 
-            Some(IpHeader {
+            Ok(Some(IpHeader {
                 version: IpVersion::V6,
                 ip_protocol,
                 src_ip: IpAddr::V6(src_ip),
                 dst_ip: IpAddr::V6(dst_ip),
                 header_length: 40,
-            })
+            }))
         }
-        _ => None,
+        _ => {
+            idps_log!("不正なIPバージョンです: {}", version);
+            Err(AnalyzeResult::Reject)
+        }
     }
 }

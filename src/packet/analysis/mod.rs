@@ -1,10 +1,10 @@
 mod analyzer;
-mod ethernet;
-mod ip;
-mod transport;
-mod firewall;
 mod duplicate_tracker;
 mod error;
+mod ethernet;
+mod firewall;
+mod ip;
+mod transport;
 
-pub use analyzer::PacketAnalyzer;
 pub use analyzer::AnalyzeResult;
+pub use analyzer::PacketAnalyzer;

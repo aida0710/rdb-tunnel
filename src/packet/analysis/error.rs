@@ -1,6 +1,4 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum PacketAnalysisError {
-
-}
+pub enum PacketAnalysisError {}
