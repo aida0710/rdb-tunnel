@@ -69,7 +69,7 @@ impl PacketTracker {
             if let Some((last_seen, mut info)) = broadcast_packets.remove(&identifier) {
                 if now.duration_since(last_seen) < Self::BROADCAST_THRESHOLD {
                     info.detect_count += 1; // カウントを増やす
-                    debug!(
+                    info!(
                         "ブロードキャスト系パケットの重複を検出: 検出回数={}回目 タイプ={:?} プロトコル={} 長さ={} 経過時間={}ms 送信元MAC={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x} 宛先MAC={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
                         info.detect_count, info.ether_type, info.protocol, info.length,
                         now.duration_since(info.first_detection).as_millis(),
@@ -106,7 +106,7 @@ impl PacketTracker {
             if let Some((last_seen, mut info)) = recent_raws.remove(&identifier) {
                 if now.duration_since(last_seen) < Self::DUPLICATE_THRESHOLD {
                     info.detect_count += 1; // カウントを増やす
-                    debug!(
+                    info!(
                         "完全一致パケットを検出（ループの可能性）: 検出回数={}回目 タイプ={:?} プロトコル={} 長さ={} 初回検出からの経過={}ms 送信元MAC={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x} 宛先MAC={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
                         info.detect_count, info.ether_type, info.protocol, info.length,
                         now.duration_since(info.first_detection).as_millis(),
