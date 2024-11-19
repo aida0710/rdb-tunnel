@@ -4,12 +4,14 @@ use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
 use crate::packet::analysis::transport::parse_transport_header;
+use crate::packet::analysis::ttl_handler::TtlHandler;
 use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::trace;
+use log::{trace, info};
 use std::net::{IpAddr, Ipv4Addr};
+use crate::packet::analysis::arp_controller::ArpController;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -39,19 +41,20 @@ lazy_static! {
 
 pub struct PacketAnalyzer {
     tracker: PacketTracker,
+    arp_controller: ArpController,  // 追加
 }
 
 impl PacketAnalyzer {
     pub fn new() -> Self {
         Self {
             tracker: PacketTracker::new(),
+            arp_controller: ArpController::new(),  // 追加
         }
     }
 
     pub async fn analyze_packet(&self, ethernet_frame: &[u8]) -> AnalyzeResult {
         // 基本的な長さチェック
         if ethernet_frame.len() < 14 + 20 {
-            // Ethernet + 最小IP header
             idps_log!(
                 "パケットが短すぎます: パケット長={}、期待値={}",
                 ethernet_frame.len(),
@@ -73,19 +76,38 @@ impl PacketAnalyzer {
                 Err(e) => return e,
             };
 
+        // ARPパケットの制御（追加）
+        if ethernet_header.ether_type == EtherType::ARP {
+            if !self.arp_controller.should_process(src_ip, dst_ip).await {  // .awaitを追加
+                info!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
+                return AnalyzeResult::Reject;
+            }
+        }
+
         // Firewallチェック
-        let firewall_packet = FirewallPacket::from_packet(ethernet_header.src_mac.clone(), ethernet_header.dst_mac.clone(), ethernet_header.ether_type, src_ip, dst_ip, ip_protocol, src_port, dst_port);
+        let firewall_packet = FirewallPacket::from_packet(
+            ethernet_header.src_mac.clone(),
+            ethernet_header.dst_mac.clone(),
+            ethernet_header.ether_type,
+            src_ip,
+            dst_ip,
+            ip_protocol,
+            src_port,
+            dst_port
+        );
         if !FIREWALL.check(&firewall_packet) {
             return AnalyzeResult::Reject;
         }
 
-        // 重複チェック
-        if self.tracker.is_duplicate(ethernet_frame, ethernet_header.ether_type).await {
-            return AnalyzeResult::Reject;
+        // TTL処理（ARPパケット以外）
+        if ethernet_header.ether_type != EtherType::ARP {
+            let ttl_handler = TtlHandler::new(1, 1);
+            let mut frame_copy = ethernet_frame.to_vec();
+            if !ttl_handler.process_packet(&mut frame_copy) {
+                info!("TTL処理によりパケットが拒否されました");
+                return AnalyzeResult::Reject;
+            }
         }
-
-        // キャッシュのクリーンアップ
-        self.tracker.cleanup_if_needed().await;
 
         AnalyzeResult::Accept(PacketData {
             src_mac: ethernet_header.src_mac,
