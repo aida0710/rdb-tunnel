@@ -1,7 +1,7 @@
 use crate::packet::monitor::error::MonitorError;
 use crate::packet::writer::PacketWriter;
 use log::{error, info};
-use pnet::datalink::{self, Channel::Ethernet, NetworkInterface};
+use pnet::datalink::{self, Channel::Ethernet, Config, NetworkInterface};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -15,7 +15,19 @@ impl InterfaceHandler {
     }
 
     pub async fn start(&self) -> Result<(), MonitorError> {
-        let (_, mut rx) = match datalink::channel(&self.interface, Default::default()) {
+        let config = Config {
+            write_buffer_size: 4096 * 6,
+            read_buffer_size: 4096 * 6,
+            read_timeout: None,
+            write_timeout: None,
+            channel_type: datalink::ChannelType::Layer2,
+            bpf_fd_attempts: 1000,
+            linux_fanout: None,
+            promiscuous: true,
+            socket_fd: None,
+        };
+
+        let (_, mut rx) = match datalink::channel(&self.interface, config) {
             Ok(Ethernet(tx, rx)) => (tx, rx),
             Ok(_) => return Err(MonitorError::UnsupportedChannelType),
             Err(e) => return Err(MonitorError::NetworkError(e.to_string())),
