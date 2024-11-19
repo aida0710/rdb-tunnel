@@ -43,7 +43,7 @@ impl TtlHandler {
         let old_checksum = u16::from_be_bytes([ip_packet[10], ip_packet[11]]);
 
         if current_ttl < self.min_ttl {
-            info!("TTLが最小値未満です: TTL={}, 最小値={}", current_ttl, self.min_ttl);
+            debug!("TTLが最小値未満です: TTL={}, 最小値={}", current_ttl, self.min_ttl);
             return false;
         }
 
@@ -52,7 +52,7 @@ impl TtlHandler {
         ip_packet[8] = new_ttl;
 
         // チェックサム再計算前の値を保存
-        let pre_recalc_checksum = u16::from_be_bytes([ip_packet[10], ip_packet[11]]);
+        let _pre_recalc_checksum = u16::from_be_bytes([ip_packet[10], ip_packet[11]]);
 
         // チェックサムの再計算
         self.recalculate_ipv4_checksum(ip_packet);
@@ -87,14 +87,14 @@ impl TtlHandler {
         let current_hop_limit = ip_packet[7];
 
         if current_hop_limit < self.min_ttl {
-            info!("Hop limitが最小値未満です: Hop limit={}, 最小値={}", current_hop_limit, self.min_ttl);
+            debug!("Hop limitが最小値未満です: Hop limit={}, 最小値={}", current_hop_limit, self.min_ttl);
             return false;
         }
 
         let new_hop_limit = current_hop_limit.saturating_sub(self.ttl_decrease);
         ip_packet[7] = new_hop_limit;
 
-        info!("IPv6パケット処理: Hop Limit {}→{} (減少量: {}), パケット長 {} bytes (ペイロード長: {} bytes)",
+        debug!("IPv6パケット処理: Hop Limit {}→{} (減少量: {}), パケット長 {} bytes (ペイロード長: {} bytes)",
             current_hop_limit, new_hop_limit, self.ttl_decrease,
             payload_length + 40, payload_length);
 

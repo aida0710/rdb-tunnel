@@ -44,7 +44,7 @@ impl PacketWriter {
         match PacketRepository::bulk_insert(packets).await {
             Ok(_) => {
                 let duration = start.elapsed();
-                debug!("フラッシュ完了: 処理時間 {}ms", duration.as_millis());
+                info!("フラッシュ完了: 処理時間 {}ms", duration.as_millis());
                 Ok(())
             }
             Err(e) => Err(WriterError::PacketBufferFlushError(e.to_string())),
@@ -54,7 +54,7 @@ impl PacketWriter {
     pub async fn process_packet(&self, ethernet_frame: &[u8]) -> Result<(), WriterError> {
         match self.analyzer.analyze_packet(ethernet_frame).await {
             AnalyzeResult::Accept(packet_data) => {
-                info!(
+                trace!(
                     "送信パケット詳細: EtherType: {}, 送信元IP: {}, 宛先IP: {}, 送信元ポート: {}, 宛先ポート: {}, IPプロトコル: {}, タイムスタンプ: {}",
                     packet_data.ether_type.value(),
                     packet_data.src_ip.0.to_string(),

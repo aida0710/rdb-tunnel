@@ -25,13 +25,6 @@ impl PacketSender {
             )));
         }
 
-        trace!(
-            "パケット送信中: {}: {} {}",
-            packet.timestamp,
-            packet.src_ip,
-            packet.dst_ip
-        );
-
         let (mut tx, _) = match datalink::channel(interface, Default::default()) {
             Ok(Ethernet(tx, rx)) => (tx, rx),
             Ok(_) => {
@@ -43,7 +36,7 @@ impl PacketSender {
 
         match tx.send_to(&*packet.raw_packet, None) {
             Some(Ok(_)) => {
-                info!(
+                trace!(
                     "送信パケット詳細: EtherType: {}, 送信元IP: {}, 宛先IP: {}, 送信元ポート: {}, 宛先ポート: {}, IPプロトコル: {}, タイムスタンプ: {}",
                     packet.ether_type, packet.src_ip, packet.dst_ip,
                     packet.src_port.map_or("未設定".to_string(), |p| p.to_string()),
