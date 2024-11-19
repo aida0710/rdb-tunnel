@@ -114,7 +114,7 @@ pub async fn inject_packet(interface: NetworkInterface) -> Result<(), PacketRead
     info!("パケット転送を開始します: {}", my_ip);
 
     let poller = PacketReader::new(interface);
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
 
     loop {
         interval.tick().await;
