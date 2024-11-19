@@ -21,10 +21,7 @@ impl InterfaceHandler {
             Err(e) => return Err(MonitorError::NetworkError(e.to_string())),
         };
 
-        info!(
-            "インターフェース {} でパケット受信を開始",
-            self.interface.name
-        );
+        info!("インターフェース {} でパケット受信を開始", self.interface.name);
         let writer = Arc::new(PacketWriter::default());
 
         // パケット処理用のチャネルを作成

@@ -56,10 +56,13 @@ impl PacketWriter {
             AnalyzeResult::Accept(packet_data) => {
                 info!(
                     "送信パケット詳細: EtherType: {}, 送信元IP: {}, 宛先IP: {}, 送信元ポート: {}, 宛先ポート: {}, IPプロトコル: {}, タイムスタンプ: {}",
-                    packet_data.ether_type.value(), packet_data.src_ip.0.to_string(), packet_data.dst_ip.0.to_string(),
+                    packet_data.ether_type.value(),
+                    packet_data.src_ip.0.to_string(),
+                    packet_data.dst_ip.0.to_string(),
                     packet_data.src_port.to_string(),
                     packet_data.dst_port.to_string(),
-                    packet_data.ip_protocol.value(), packet_data.timestamp
+                    packet_data.ip_protocol.value(),
+                    packet_data.timestamp
                 );
                 self.buffer.push(packet_data).await;
                 Ok(())
