@@ -32,11 +32,6 @@ async-trait = { version = "0.1" }
 # Future型と非同期プログラミング
 futures = { version = "0.3.31" }
 
-# === シリアライゼーション・データ形式 ===
-# データシリアライズ/デシリアライズ
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-
 # === エラー処理・ロギング ===
 # カスタムエラー型
 thiserror = { version = "2.0.3" }
@@ -50,10 +45,6 @@ env_logger = { version = "0.11.5" }
 dotenv = { version = "0.15" }
 # 日付と時刻操作
 chrono = { version = "0.4" }
-# 乱数生成
-rand = { version = "0.8" }
-# Base64エンコーディング
-base64 = { version = "0.22" }
 # 遅延初期化された静的変数
 lazy_static = { version = "1.5" }
 # バイトバッファ操作
