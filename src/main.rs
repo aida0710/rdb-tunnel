@@ -58,6 +58,8 @@ async fn main() -> Result<(), InitProcessError> {
     .map_err(|e| InitProcessError::InterfaceSelectionError(e.to_string()))?;
     info!("デバイスの選択に成功しました: {}", interface.name);
 
+    idps_log!("idps logの表示が有効になっています");
+
     // タスクスケジューラの起動
     let scheduler = TaskScheduler::new(interface);
     if let Err(e) = scheduler
