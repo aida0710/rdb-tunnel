@@ -3,6 +3,7 @@ use crate::packet::Packet;
 use log::{debug, error, info, trace};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface};
+use crate::idps_log;
 
 pub struct PacketSender;
 
@@ -14,10 +15,6 @@ impl PacketSender {
         packet: &Packet,
     ) -> Result<(), PacketReaderError> {
         if packet.raw_packet.len() > Self::MAX_PACKET_SIZE {
-            debug!(
-                "パケットサイズが大きすぎるためスキップ: {} bytes",
-                packet.raw_packet.len()
-            );
             return Err(PacketReaderError::SendError(format!(
                 "パケットサイズが制限を超えています: {} bytes (最大: {} bytes)",
                 packet.raw_packet.len(),
@@ -50,7 +47,7 @@ impl PacketSender {
                 Err(PacketReaderError::SendError(e.to_string()))
             }
             None => {
-                error!("宛先が指定されていないためスキップ");
+                idps_log!("宛先が指定されていないためスキップ");
                 Err(PacketReaderError::SendError(
                     "宛先が指定されていません".to_string(),
                 ))

@@ -18,11 +18,6 @@ pub fn parse_ethernet_header(frame: &[u8]) -> Option<(EthernetHeader, &[u8])> {
     let (src_mac, dst_mac) = extract_mac_addresses(frame);
     let ether_type = parse_ether_type(frame);
 
-    debug!(
-        "Ethernet: {} -> {} (Type: {:?})",
-        src_mac, dst_mac, ether_type
-    );
-
     Some((
         EthernetHeader {
             src_mac,
