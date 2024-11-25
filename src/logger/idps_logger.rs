@@ -79,10 +79,10 @@ pub fn set_log_file(file_path: &str) -> Result<(), LoggerError> {
     }
 }
 
-pub fn write_log(message: &str, file: &str, line: u32) {
+pub fn write_log(message: &str, module_path: &str, line: u32) {
     if let Ok(logger) = LOGGER.lock() {
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        let log_message = format!("{} [IDPS] {}/{} - {}\n", timestamp, file, line, message);
+        let log_message = format!("{} [IDPS] {} L:{} - {}\n", timestamp, module_path, line, message);
 
         match logger.mode {
             OutputMode::All | OutputMode::FileOnly => {
@@ -110,7 +110,7 @@ macro_rules! idps_log {
     ($($arg:tt)*) => {{
         $crate::logger::idps_logger::write_log(
             &format!($($arg)*),
-            file!(),
+            module_path!(),
             line!()
         );
     }};
