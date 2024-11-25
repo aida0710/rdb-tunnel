@@ -26,10 +26,11 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<(), Box<dyn std::erro
         .format(|buf, record| {
             writeln!(
                 buf,
-                "{} [{}] {} - {}",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                "{} [{}] {}/{} - {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
                 record.level(),
                 record.target(),
+                record.line().unwrap_or(0),
                 record.args()
             )
         })
