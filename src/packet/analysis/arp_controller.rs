@@ -1,8 +1,8 @@
+use log::{info, trace};
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::time::{Duration, Instant};
-use log::{info, trace};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -18,12 +18,12 @@ pub struct ArpControlSettings {
 impl Default for ArpControlSettings {
     fn default() -> Self {
         Self {
-            burst_window: Duration::from_millis(100),
-            max_burst: 4,
-            normal_window: Duration::from_secs(1),
-            max_normal: 8,
-            cleanup_threshold: 1000,
-            max_entries: 5000,
+            burst_window: Duration::from_millis(200),
+            max_burst: 12,
+            normal_window: Duration::from_millis(500),
+            max_normal: 24,
+            cleanup_threshold: 1500,
+            max_entries: 7500,
         }
     }
 }
@@ -53,7 +53,7 @@ impl ArpController {
         let mut inner = self.inner.lock().await;
         let now = Instant::now();
         let pair = (src_ip, dst_ip);
-        let settings = inner.settings.clone();  // Clone the settings
+        let settings = inner.settings.clone(); // Clone the settings
 
         // エントリ数ベースのクリーンアップ
         if inner.normal_count.len() >= settings.cleanup_threshold {
@@ -105,17 +105,17 @@ impl ArpControllerInner {
         let settings = self.settings.clone();
 
         // 期限切れのエントリを削除
-        self.burst_count.retain(|_, (time, _)| {
-            now.duration_since(*time) < settings.burst_window
-        });
+        self.burst_count
+            .retain(|_, (time, _)| now.duration_since(*time) < settings.burst_window);
 
-        self.normal_count.retain(|_, (time, _)| {
-            now.duration_since(*time) < settings.normal_window
-        });
+        self.normal_count
+            .retain(|_, (time, _)| now.duration_since(*time) < settings.normal_window);
 
         // 古いエントリを削除してキャパシティを確保
         if self.normal_count.len() > settings.max_entries / 2 {
-            let mut entries: Vec<_> = self.normal_count.iter()
+            let mut entries: Vec<_> = self
+                .normal_count
+                .iter()
                 .map(|(k, (t, c))| (k.clone(), *t, *c))
                 .collect();
 
@@ -127,7 +127,9 @@ impl ArpControllerInner {
             }
         }
 
-        info!("ARPコントローラーのクリーンアップを実行: アクティブペア={}", 
-            self.normal_count.len());
+        info!(
+            "ARPコントローラーのクリーンアップを実行: アクティブペア={}",
+            self.normal_count.len()
+        );
     }
 }
