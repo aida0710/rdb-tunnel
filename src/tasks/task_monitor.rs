@@ -88,25 +88,24 @@ impl TaskMonitor {
         result: Result<Result<(), String>, tokio::task::JoinError>,
         task_name: &str,
     ) -> Result<(), TaskError> {
-        // タスクの状態を非アクティブに設定
         self.update_task_state(task_name, false).await?;
 
         match result {
             Ok(Ok(_)) => {
-                debug!("{} task completed successfully", task_name);
+                debug!("{} タスクが正常に完了しました", task_name);
                 Ok(())
             }
             Ok(Err(e)) => {
-                error!("{} task terminated with error: {}", task_name, e);
+                error!("{} タスクがエラーで終了しました: {}", task_name, e);
                 Err(TaskError::ExecutionError(format!(
-                    "{} error: {}",
+                    "{} タスクのエラー: {}",
                     task_name, e
                 )))
             }
             Err(e) => {
-                error!("{} task terminated with panic: {}", task_name, e);
+                error!("{} タスクがパニックで終了しました: {}", task_name, e);
                 Err(TaskError::PanicError(format!(
-                    "{} task panicked",
+                    "{} タスクがパニックしました",
                     task_name
                 )))
             }
@@ -118,17 +117,15 @@ impl TaskMonitor {
         while start_time.elapsed() < self.shutdown_timeout {
             let state = self.task_state.lock().await;
             if state.is_all_inactive() {
-                info!("All tasks shut down successfully");
+                info!("全てのタスクが正常にシャットダウンしました");
                 return Ok(());
             }
             drop(state);
             sleep(SHUTDOWN_CHECK_INTERVAL).await;
         }
 
-        error!("Task shutdown timed out");
-        Err(TaskError::TimeoutError(
-            "Shutdown timeout".to_string(),
-        ))
+        error!("タスクのシャットダウンがタイムアウトしました");
+        Err(TaskError::TimeoutError("シャットダウンタイムアウト".to_string()))
     }
 
     async fn update_task_state(&self, task_name: &str, active: bool) -> Result<(), TaskError> {
@@ -139,7 +136,7 @@ impl TaskMonitor {
             "analysis" => state.analysis_active = active,
             _ => {
                 return Err(TaskError::StateUpdateError(format!(
-                    "Unknown task name: {}",
+                    "不明なタスク名が指定されました: {}",
                     task_name
                 )))
             }
