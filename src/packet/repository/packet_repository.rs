@@ -89,34 +89,20 @@ impl PacketRepository {
         last_timestamp: Option<&DateTime<Utc>>,
     ) -> Result<Vec<Packet>, DatabaseError> {
         let db = Database::get_database();
-
-        let (query, params): (_, Vec<&(dyn ToSql + Sync)>) = if is_first {
-            (
-                "SELECT * FROM packets
-                WHERE timestamp >= NOW() - INTERVAL '30 seconds'
-                ORDER BY timestamp ASC"
-                    .to_string(),
-                vec![],
-            )
-        } else if let Some(ts) = last_timestamp {
-            (
-                "SELECT * FROM packets
-                WHERE timestamp > $1
-                ORDER BY timestamp ASC"
-                    .to_string(),
-                vec![ts],
-            )
+        let query = if is_first {
+            "SELECT * FROM packets WHERE timestamp >= NOW() - INTERVAL '8 seconds' ORDER BY timestamp ASC"
         } else {
-            (
-                "SELECT * FROM packets
-                WHERE timestamp >= NOW() - INTERVAL '5 seconds'
-                ORDER BY timestamp ASC"
-                    .to_string(),
-                vec![],
-            )
+            "SELECT * FROM packets WHERE timestamp > $1 ORDER BY timestamp ASC"
         };
 
-        let rows = db.query(&query, &params).await?;
+        let fallback_time = Utc::now() - chrono::Duration::seconds(5);
+        let params: Vec<&(dyn ToSql + Sync)> = if is_first {
+            vec![]
+        } else {
+            vec![last_timestamp.unwrap_or(&fallback_time)]
+        };
+
+        let rows = db.query(query, &params).await?;
         Ok(rows
             .into_iter()
             .map(|row| Packet {
