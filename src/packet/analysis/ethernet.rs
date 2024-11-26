@@ -1,6 +1,5 @@
 use crate::idps_log;
 use crate::packet::types::{EtherType, MacAddr};
-use log::debug;
 
 #[derive(Debug)]
 pub struct EthernetHeader {

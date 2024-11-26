@@ -1,4 +1,4 @@
-use log::{info, trace};
+use log::{debug, info, trace};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -72,7 +72,7 @@ impl ArpController {
             if now.duration_since(entry.0) < settings.burst_window {
                 entry.1 += 1;
                 if entry.1 >= settings.max_burst {
-                    info!("ARPバースト制限超過: src={}, dst={}", src_ip, dst_ip);
+                    debug!("ARPバースト制限超過: src={}, dst={}", src_ip, dst_ip);
                     return false;
                 }
             } else {
@@ -86,7 +86,7 @@ impl ArpController {
             if now.duration_since(entry.0) < settings.normal_window {
                 entry.1 += 1;
                 if entry.1 >= settings.max_normal {
-                    info!("ARP通常レート制限超過: src={}, dst={}", src_ip, dst_ip);
+                    debug!("ARP通常レート制限超過: src={}, dst={}", src_ip, dst_ip);
                     return false;
                 }
             } else {

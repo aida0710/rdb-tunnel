@@ -1,5 +1,4 @@
 mod analyzer;
-mod duplicate_tracker;
 mod ethernet;
 mod firewall;
 mod ip;

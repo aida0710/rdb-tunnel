@@ -1,5 +1,3 @@
-use crate::packet::analysis::ip::parse_ip_header;
-use crate::packet::types::EtherType;
 use log::{info, debug};
 
 pub struct TtlHandler {

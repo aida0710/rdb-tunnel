@@ -2,7 +2,7 @@ use crate::packet::analysis::{AnalyzeResult, PacketAnalyzer};
 use crate::packet::repository::PacketRepository;
 use crate::packet::writer::error::WriterError;
 use crate::packet::writer::PacketBuffer;
-use log::{debug, error, info, trace};
+use log::{error, info, trace};
 use tokio::time::{interval, Duration};
 
 const FLUSH_INTERVAL: Duration = Duration::from_millis(100);
