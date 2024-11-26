@@ -23,44 +23,44 @@ impl TaskMonitor {
 
     pub async fn monitor_tasks(
         &self,
-        polling: JoinHandle<Result<(), String>>,
+        reader: JoinHandle<Result<(), String>>,
         writer: JoinHandle<Result<(), String>>,
         analysis: JoinHandle<Result<(), String>>,
         mut shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(), TaskError> {
         // 初期状態の設定
-        self.update_task_state("ポーリング", true)
+        self.update_task_state("reader", true)
             .await
             .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("ライター", true)
+        self.update_task_state("writer", true)
             .await
             .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("分析", true)
+        self.update_task_state("analysis", true)
             .await
             .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
 
         let result = loop {
             tokio::select! {
-                result = polling => {
-                    if let Err(e) = self.handle_task_result(result, "ポーリング").await {
+                result = reader => {
+                    if let Err(e) = self.handle_task_result(result, "reader").await {
                         break Err(TaskError::TaskExecutionError(e.to_string()));
                     }
-                    break Err(TaskError::TaskExecutionError("ポーリングタスクが予期せず終了".to_string()));
+                    break Err(TaskError::TaskExecutionError("Reader task unexpectedly terminated".into()));
                 }
                 result = writer => {
-                    if let Err(e) = self.handle_task_result(result, "ライター").await {
+                    if let Err(e) = self.handle_task_result(result, "writer").await {
                         break Err(TaskError::TaskExecutionError(e.to_string()));
                     }
-                    break Err(TaskError::TaskExecutionError("ライタータスクが予期せず終了".to_string()));
+                    break Err(TaskError::TaskExecutionError("Writer task unexpectedly terminated".into()));
                 }
                 result = analysis => {
-                    if let Err(e) = self.handle_task_result(result, "分析").await {
+                    if let Err(e) = self.handle_task_result(result, "analysis").await {
                         break Err(TaskError::TaskExecutionError(e.to_string()));
                     }
-                    break Err(TaskError::TaskExecutionError("分析タスクが予期せず終了".to_string()));
+                    break Err(TaskError::TaskExecutionError("Analysis task unexpectedly terminated".into()));
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("シャットダウン信号を受信しました");
+                    info!("Received shutdown signal");
                     match self.wait_for_shutdown().await {
                         Ok(_) => break Ok(()),
                         Err(e) => break Err(TaskError::TaskExecutionError(e.to_string())),
@@ -70,13 +70,13 @@ impl TaskMonitor {
         };
 
         // タスクの状態をクリーンアップ
-        self.update_task_state("ポーリング", false)
+        self.update_task_state("reader", false)
             .await
             .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("ライター", false)
+        self.update_task_state("writer", false)
             .await
             .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("分析", false)
+        self.update_task_state("analysis", false)
             .await
             .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
 
@@ -93,20 +93,20 @@ impl TaskMonitor {
 
         match result {
             Ok(Ok(_)) => {
-                debug!("{}タスクが正常終了しました", task_name);
+                debug!("{} task completed successfully", task_name);
                 Ok(())
             }
             Ok(Err(e)) => {
-                error!("{}タスクがエラーで終了: {}", task_name, e);
+                error!("{} task terminated with error: {}", task_name, e);
                 Err(TaskError::ExecutionError(format!(
-                    "{}エラー: {}",
+                    "{} error: {}",
                     task_name, e
                 )))
             }
             Err(e) => {
-                error!("{}タスクがパニックで終了: {}", task_name, e);
+                error!("{} task terminated with panic: {}", task_name, e);
                 Err(TaskError::PanicError(format!(
-                    "{}タスクがパニックで終了",
+                    "{} task panicked",
                     task_name
                 )))
             }
@@ -118,28 +118,28 @@ impl TaskMonitor {
         while start_time.elapsed() < self.shutdown_timeout {
             let state = self.task_state.lock().await;
             if state.is_all_inactive() {
-                info!("全てのタスクが正常にシャットダウンしました");
+                info!("All tasks shut down successfully");
                 return Ok(());
             }
             drop(state);
             sleep(SHUTDOWN_CHECK_INTERVAL).await;
         }
 
-        error!("タスクのシャットダウンがタイムアウトしました");
+        error!("Task shutdown timed out");
         Err(TaskError::TimeoutError(
-            "シャットダウンタイムアウト".to_string(),
+            "Shutdown timeout".to_string(),
         ))
     }
 
-    pub async fn update_task_state(&self, task_name: &str, active: bool) -> Result<(), TaskError> {
+    async fn update_task_state(&self, task_name: &str, active: bool) -> Result<(), TaskError> {
         let mut state = self.task_state.lock().await;
         match task_name {
-            "ポーリング" => state.polling_active = active,
-            "ライター" => state.writer_active = active,
-            "分析" => state.analysis_active = active,
+            "reader" => state.reader_active = active,
+            "writer" => state.writer_active = active,
+            "analysis" => state.analysis_active = active,
             _ => {
                 return Err(TaskError::StateUpdateError(format!(
-                    "不明なタスク名: {}",
+                    "Unknown task name: {}",
                     task_name
                 )))
             }

@@ -1,6 +1,6 @@
 use super::TaskState;
 use crate::packet::monitor::NetworkMonitor;
-use crate::packet::reader::inject_packet;
+use crate::packet::reader::PacketReader;
 use crate::packet::writer::PacketWriter;
 use crate::tasks::error::TaskError;
 use crate::tasks::task_monitor::TaskMonitor;
@@ -13,6 +13,14 @@ use tokio::time::Duration;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1000);
 
+// 各タスクのハンドルをまとめた構造体
+struct TaskHandles {
+    reader: JoinHandle<Result<(), String>>,
+    writer: JoinHandle<Result<(), String>>,
+    analysis: JoinHandle<Result<(), String>>,
+}
+
+// パケット処理の各タスクを管理し、実行するスケジューラ
 pub struct TaskScheduler {
     task_state: Arc<Mutex<TaskState>>,
     shutdown_tx: broadcast::Sender<()>,
@@ -29,42 +37,54 @@ impl TaskScheduler {
         }
     }
 
+    // メインのタスク実行関数
     pub async fn run(&self) -> Result<(), TaskError> {
-        info!("タスクスケジューラを開始します");
-
+        info!("タスクスケジューラを起動しています");
         let monitor = TaskMonitor::new(self.task_state.clone(), SHUTDOWN_TIMEOUT);
 
-        let polling_handle = self.spawn_polling_task();
-        let writer_handle = self.spawn_writer_task();
-        let analysis_handle = self.spawn_analysis_task();
+        let handles = self.spawn_all_tasks();
 
         monitor
             .monitor_tasks(
-                polling_handle,
-                writer_handle,
-                analysis_handle,
+                handles.reader,
+                handles.writer,
+                handles.analysis,
                 self.shutdown_tx.subscribe(),
             )
             .await
     }
 
-    fn spawn_polling_task(&self) -> JoinHandle<Result<(), String>> {
+    // 全タスクの生成と起動を行う
+    fn spawn_all_tasks(&self) -> TaskHandles {
+        TaskHandles {
+            reader: self.spawn_reader_task(),
+            writer: self.spawn_writer_task(),
+            analysis: self.spawn_analysis_task(),
+        }
+    }
+
+    // パケット読み取りタスクの生成
+    fn spawn_reader_task(&self) -> JoinHandle<Result<(), String>> {
         let interface = self.interface.clone();
         let mut shutdown_rx = self.shutdown_tx.subscribe();
 
         tokio::spawn(async move {
             tokio::select! {
-                result = inject_packet(interface) => {
+                result = async move {
+                    info!("パケットのデータベース読み取りタスクを起動しました");
+                    PacketReader::start(interface).await
+                } => {
                     result.map_err(|e| e.to_string())
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("Packet　Polling Taskを停止しています。");
+                    info!("パケットのデータベース読み取りタスクを停止させました");
                     Ok(())
                 }
             }
         })
     }
 
+    // パケット書き込みタスクの生成
     fn spawn_writer_task(&self) -> JoinHandle<Result<(), String>> {
         let mut shutdown_rx = self.shutdown_tx.subscribe();
         let writer = PacketWriter::default();
@@ -72,27 +92,32 @@ impl TaskScheduler {
         tokio::spawn(async move {
             tokio::select! {
                 _ = writer.start() => {
+                    info!("パケットのデータベース書き込みタスクを起動しました");
                     Ok(())
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("Packet Writer Taskを停止しています。");
+                    info!("パケットのデータベース書き込みタスクを停止させました");
                     Ok(())
                 }
             }
         })
     }
 
+    // パケット分析タスクの生成
     fn spawn_analysis_task(&self) -> JoinHandle<Result<(), String>> {
         let interface = self.interface.clone();
         let mut shutdown_rx = self.shutdown_tx.subscribe();
 
         tokio::spawn(async move {
             tokio::select! {
-                result = NetworkMonitor::start_monitoring(interface) => {
+                result = {
+                    info!("パケットの収集・解析タスクを起動しました");
+                    NetworkMonitor::start_monitoring(interface)
+                } => {
                     result.map_err(|e| e.to_string())
                 }
                 _ = shutdown_rx.recv() => {
-                    info!("Analysis Taskを停止しています。");
+                    info!("パケットの収集・解析タスクを停止させました");
                     Ok(())
                 }
             }
