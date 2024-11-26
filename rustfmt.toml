@@ -1,0 +1,14 @@
+max_width = 180
+
+# 配列やチェーンメソッドの幅設定
+array_width = 80
+chain_width = 180
+
+# struct variantの幅設定
+struct_variant_width = 30
+
+# matchブロックの最後のカンマを省略しない
+match_block_trailing_comma = true
+
+# matchアームのパイプの設定
+match_arm_leading_pipes = "Never"

@@ -19,20 +19,13 @@ pub async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeRes
         4 => {
             if data.len() < 20 {
                 // 最小IPv4ヘッダ長
-                idps_log!(
-                    "IPv4ヘッダが短すぎます: {} バイト < 最小値20バイト",
-                    data.len()
-                );
+                idps_log!("IPv4ヘッダが短すぎます: {} バイト < 最小値20バイト", data.len());
                 return Err(AnalyzeResult::Reject);
             }
 
             let ihl = (data[0] & 0xF) as usize * 4; // IPヘッダ長
             if data.len() < ihl {
-                idps_log!(
-                    "IPv4パケット長がヘッダ長より短いです: {} バイト < 宣言値 {} バイト",
-                    data.len(),
-                    ihl
-                );
+                idps_log!("IPv4パケット長がヘッダ長より短いです: {} バイト < 宣言値 {} バイト", data.len(), ihl);
                 return Err(AnalyzeResult::Reject);
             }
 
@@ -47,14 +40,11 @@ pub async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeRes
                 dst_ip: IpAddr::V4(dst_ip),
                 header_length: ihl,
             }))
-        }
+        },
         6 => {
             // IPv6ヘッダは40バイト固定
             if data.len() < 40 {
-                idps_log!(
-                    "IPv6ヘッダが短すぎます: {} バイト < 必要な40バイト",
-                    data.len()
-                );
+                idps_log!("IPv6ヘッダが短すぎます: {} バイト < 必要な40バイト", data.len());
                 return Err(AnalyzeResult::Reject);
             }
 
@@ -87,10 +77,10 @@ pub async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeRes
                 dst_ip: IpAddr::V6(dst_ip),
                 header_length: 40,
             }))
-        }
+        },
         _ => {
             idps_log!("不正なIPバージョンです: {}", version);
             Err(AnalyzeResult::Reject)
-        }
+        },
     }
 }

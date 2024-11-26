@@ -41,11 +41,7 @@ impl From<u16> for EtherType {
 }
 
 impl ToSql for EtherType {
-    fn to_sql(
-        &self,
-        _ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+    fn to_sql(&self, _ty: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         (self.0 as i32).to_sql(_ty, out)
     }
 
@@ -53,11 +49,7 @@ impl ToSql for EtherType {
         <i32 as ToSql>::accepts(ty)
     }
 
-    fn to_sql_checked(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+    fn to_sql_checked(&self, ty: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         (self.0 as i32).to_sql_checked(ty, out)
     }
 }

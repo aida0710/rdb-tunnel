@@ -19,7 +19,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<(), Box<dyn std::erro
 
     // 通常のロガーの設定
     /*let file: File = File::create(format!("../../{}", logger_config.normal_logger_file))
-        .map_err(|e| LoggerError::LogFileCreateError(e.to_string()))?;*/
+    .map_err(|e| LoggerError::LogFileCreateError(e.to_string()))?;*/
 
     Builder::new()
         .filter_level(LevelFilter::Info)

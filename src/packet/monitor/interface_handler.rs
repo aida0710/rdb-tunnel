@@ -47,11 +47,11 @@ impl InterfaceHandler {
                         if packet_tx.send(ethernet_frame.to_vec()).await.is_err() {
                             break;
                         }
-                    }
+                    },
                     Err(e) => {
                         error!("パケット読み取りエラー: {}", e);
                         break;
-                    }
+                    },
                 }
             }
             Ok::<(), MonitorError>(())
@@ -84,10 +84,7 @@ impl InterfaceHandler {
         }
     }
 
-    async fn process_packet(
-        writer: &PacketWriter,
-        ethernet_data: &[u8],
-    ) -> Result<(), MonitorError> {
+    async fn process_packet(writer: &PacketWriter, ethernet_data: &[u8]) -> Result<(), MonitorError> {
         writer.process_packet(ethernet_data).await.map_err(|e| {
             error!("パケット処理中にエラーが発生しました: {}", e);
             MonitorError::ProcessingError(e.to_string())

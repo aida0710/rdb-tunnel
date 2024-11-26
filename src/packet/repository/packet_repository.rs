@@ -26,11 +26,7 @@ impl PacketRepository {
             processed += result;
         }
 
-        info!(
-            "{}個のパケットを{}秒で一括挿入しました",
-            processed,
-            start_time.elapsed().as_secs_f64()
-        );
+        info!("{}個のパケットを{}秒で一括挿入しました", processed, start_time.elapsed().as_secs_f64());
 
         Ok(())
     }
@@ -84,10 +80,7 @@ impl PacketRepository {
         (query, params)
     }
 
-    pub async fn get_filtered_packets(
-        is_first: bool,
-        last_timestamp: Option<&DateTime<Utc>>,
-    ) -> Result<Vec<Packet>, DatabaseError> {
+    pub async fn get_filtered_packets(is_first: bool, last_timestamp: Option<&DateTime<Utc>>) -> Result<Vec<Packet>, DatabaseError> {
         let db = Database::get_database();
         let query = if is_first {
             "SELECT * FROM packets WHERE timestamp >= NOW() - INTERVAL '8 seconds' ORDER BY timestamp ASC"
@@ -96,11 +89,7 @@ impl PacketRepository {
         };
 
         let fallback_time = Utc::now() - chrono::Duration::seconds(5);
-        let params: Vec<&(dyn ToSql + Sync)> = if is_first {
-            vec![]
-        } else {
-            vec![last_timestamp.unwrap_or(&fallback_time)]
-        };
+        let params: Vec<&(dyn ToSql + Sync)> = if is_first { vec![] } else { vec![last_timestamp.unwrap_or(&fallback_time)] };
 
         let rows = db.query(query, &params).await?;
         Ok(rows

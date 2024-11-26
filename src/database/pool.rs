@@ -14,8 +14,7 @@ pub struct DatabasePool {
 
 impl DatabasePool {
     pub async fn new(connection_string: &str) -> Result<Self, DatabaseError> {
-        let manager = PostgresConnectionManager::new_from_stringlike(connection_string, NoTls)
-            .map_err(DatabaseError::ConnectionManagerError)?;
+        let manager = PostgresConnectionManager::new_from_stringlike(connection_string, NoTls).map_err(DatabaseError::ConnectionManagerError)?;
         let pool = Pool::builder()
             .max_size(20)
             .min_idle(Some(10))
@@ -28,26 +27,15 @@ impl DatabasePool {
         Ok(Self { pool })
     }
 
-    pub async fn initialize(
-        host: &str,
-        port: u16,
-        user: &str,
-        password: &str,
-        database: &str,
-    ) -> Result<(), DatabaseError> {
-        let connection_string = format!(
-            "postgres://{}:{}@{}:{}/{}",
-            user, password, host, port, database
-        );
+    pub async fn initialize(host: &str, port: u16, user: &str, password: &str, database: &str) -> Result<(), DatabaseError> {
+        let connection_string = format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database);
         let pool = Self::new(&connection_string).await?;
 
         // 接続テスト
-        let (client, connection) = tokio_postgres::connect(&connection_string, NoTls)
-            .await
-            .map_err(|e| {
-                eprintln!("接続エラー: {:?}", e);
-                DatabaseError::InitFailedConnectDatabase(e.to_string())
-            })?;
+        let (client, connection) = tokio_postgres::connect(&connection_string, NoTls).await.map_err(|e| {
+            eprintln!("接続エラー: {:?}", e);
+            DatabaseError::InitFailedConnectDatabase(e.to_string())
+        })?;
 
         tokio::spawn(async move {
             if let Err(e) = connection.await {
@@ -57,9 +45,7 @@ impl DatabasePool {
 
         drop(client);
 
-        DATABASE_POOL
-            .set(pool)
-            .map_err(|_| DatabaseError::InitializationError)?;
+        DATABASE_POOL.set(pool).map_err(|_| DatabaseError::InitializationError)?;
         Ok(())
     }
 

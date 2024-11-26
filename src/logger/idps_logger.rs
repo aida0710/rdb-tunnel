@@ -47,7 +47,7 @@ fn create_log_file(file_path: &str) -> Result<File, LoggerError> {
         Ok(file) => {
             println!("ファイルを作成または開きました: {}", file_path);
             Ok(file)
-        }
+        },
         Err(e) => Err(LoggerError::LogFileCreateError(e.to_string())),
     }
 }
@@ -73,9 +73,7 @@ pub fn set_log_file(file_path: &str) -> Result<(), LoggerError> {
         }
         Ok(())
     } else {
-        Err(LoggerError::LogFileCreateError(
-            "Failed to lock logger".to_string(),
-        ))
+        Err(LoggerError::LogFileCreateError("Failed to lock logger".to_string()))
     }
 }
 
@@ -92,15 +90,15 @@ pub fn write_log(message: &str, module_path: &str, line: u32) {
                         let _ = file.flush();
                     }
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         match logger.mode {
             OutputMode::All | OutputMode::ConsoleOnly => {
                 print!("{}", log_message);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 }

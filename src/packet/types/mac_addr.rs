@@ -9,22 +9,13 @@ pub struct MacAddr(pub [u8; 6]);
 
 impl fmt::Display for MacAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mac_string = self
-            .0
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<Vec<_>>()
-            .join(":");
+        let mac_string = self.0.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(":");
         write!(f, "{}", mac_string)
     }
 }
 
 impl ToSql for MacAddr {
-    fn to_sql(
-        &self,
-        _ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+    fn to_sql(&self, _ty: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         out.extend_from_slice(&self.0);
         Ok(IsNull::No)
     }
@@ -33,11 +24,7 @@ impl ToSql for MacAddr {
         ty.name() == "macaddr"
     }
 
-    fn to_sql_checked(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+    fn to_sql_checked(&self, ty: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         self.to_sql(ty, out)
     }
 }

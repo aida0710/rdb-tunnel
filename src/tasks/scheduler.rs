@@ -44,14 +44,7 @@ impl TaskScheduler {
 
         let handles = self.spawn_all_tasks();
 
-        monitor
-            .monitor_tasks(
-                handles.reader,
-                handles.writer,
-                handles.analysis,
-                self.shutdown_tx.subscribe(),
-            )
-            .await
+        monitor.monitor_tasks(handles.reader, handles.writer, handles.analysis, self.shutdown_tx.subscribe()).await
     }
 
     // 全タスクの生成と起動を行う

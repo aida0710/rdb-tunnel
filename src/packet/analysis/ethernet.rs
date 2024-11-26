@@ -17,14 +17,7 @@ pub fn parse_ethernet_header(frame: &[u8]) -> Option<(EthernetHeader, &[u8])> {
     let (src_mac, dst_mac) = extract_mac_addresses(frame);
     let ether_type = parse_ether_type(frame);
 
-    Some((
-        EthernetHeader {
-            src_mac,
-            dst_mac,
-            ether_type,
-        },
-        &frame[14..],
-    ))
+    Some((EthernetHeader { src_mac, dst_mac, ether_type }, &frame[14..]))
 }
 
 fn extract_mac_addresses(frame: &[u8]) -> (MacAddr, MacAddr) {

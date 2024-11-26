@@ -46,7 +46,7 @@ impl PacketWriter {
                 let duration = start.elapsed();
                 info!("フラッシュ完了: 処理時間 {}ms", duration.as_millis());
                 Ok(())
-            }
+            },
             Err(e) => Err(WriterError::PacketBufferFlushError(e.to_string())),
         }
     }
@@ -66,11 +66,11 @@ impl PacketWriter {
                 );
                 self.buffer.push(packet_data).await;
                 Ok(())
-            }
+            },
             AnalyzeResult::Reject => {
                 trace!("パケットが拒否されました");
                 Ok(())
-            }
+            },
         }
     }
 }

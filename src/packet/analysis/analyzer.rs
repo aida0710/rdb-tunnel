@@ -28,10 +28,7 @@ pub enum AnalyzeResult {
 lazy_static! {
     static ref FIREWALL: IpFirewall = {
         let mut fw = IpFirewall::new(Policy::Blacklist);
-        fw.add_rule(
-            Filter::DstIpAddress("160.251.175.134".parse().unwrap()),
-            100,
-        );
+        fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
         fw.add_rule(Filter::SrcIpAddress("160.251.175.134".parse().unwrap()), 99);
         fw.add_rule(Filter::DstPort(5432), 95);
         fw.add_rule(Filter::SrcPort(5432), 90);
@@ -55,11 +52,7 @@ impl PacketAnalyzer {
     pub async fn analyze_packet(&self, ethernet_frame: &[u8]) -> AnalyzeResult {
         // 基本的な長さチェック
         if ethernet_frame.len() < 14 + 20 {
-            idps_log!(
-                "パケットが短すぎます: パケット長={}、期待値={}",
-                ethernet_frame.len(),
-                14 + 20
-            );
+            idps_log!("パケットが短すぎます: パケット長={}、期待値={}", ethernet_frame.len(), 14 + 20);
             return AnalyzeResult::Reject;
         }
 
@@ -70,11 +63,10 @@ impl PacketAnalyzer {
         };
 
         // IPパケットの解析
-        let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) =
-            match Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
-                Ok(result) => result,
-                Err(e) => return e,
-            };
+        let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) = match Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
+            Ok(result) => result,
+            Err(e) => return e,
+        };
 
         // ARPパケットの制御（追加）
         if ethernet_header.ether_type == EtherType::ARP {
@@ -125,10 +117,7 @@ impl PacketAnalyzer {
         })
     }
 
-    async fn parse_ip_packet(
-        ethernet_frame: &[u8],
-        ether_type: EtherType,
-    ) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16, usize), AnalyzeResult> {
+    async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16, usize), AnalyzeResult> {
         let src_ip;
         let dst_ip;
         let mut src_port = 0u16;
@@ -155,52 +144,32 @@ impl PacketAnalyzer {
                         src_port = transport_header.src_port;
                         dst_port = transport_header.dst_port;
                     }
-                }
+                },
                 Err(_e) => {
                     idps_log!("IPヘッダーの解析に失敗しました: タイプ={:?}", ether_type);
                     return Err(AnalyzeResult::Reject);
-                }
+                },
                 _ => {
                     idps_log!("IPヘッダーが見つかりませんでした");
                     return Err(AnalyzeResult::Reject);
-                }
+                },
             },
             EtherType::ARP => {
                 if ethernet_frame.len() >= 42 {
                     // ARPパケットの最小長
-                    src_ip = IpAddr::V4(Ipv4Addr::new(
-                        ethernet_frame[28],
-                        ethernet_frame[29],
-                        ethernet_frame[30],
-                        ethernet_frame[31],
-                    ));
-                    dst_ip = IpAddr::V4(Ipv4Addr::new(
-                        ethernet_frame[38],
-                        ethernet_frame[39],
-                        ethernet_frame[40],
-                        ethernet_frame[41],
-                    ));
+                    src_ip = IpAddr::V4(Ipv4Addr::new(ethernet_frame[28], ethernet_frame[29], ethernet_frame[30], ethernet_frame[31]));
+                    dst_ip = IpAddr::V4(Ipv4Addr::new(ethernet_frame[38], ethernet_frame[39], ethernet_frame[40], ethernet_frame[41]));
                 } else {
-                    idps_log!(
-                        "ARPパケットが短すぎます: パケット長={}、期待値=42",
-                        ethernet_frame.len()
-                    );
+                    idps_log!("ARPパケットが短すぎます: パケット長={}、期待値=42", ethernet_frame.len());
                     return Err(AnalyzeResult::Reject);
                 }
-            }
+            },
             _ => {
                 // arpとicmp以外をすべて排除
                 return Err(AnalyzeResult::Reject);
-            }
+            },
         }
 
-        Ok((
-            src_ip,
-            dst_ip,
-            ip_protocol,
-            src_port,
-            dst_port,
-            payload_offset,
-        ))
+        Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset))
     }
 }

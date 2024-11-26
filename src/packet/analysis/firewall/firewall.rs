@@ -9,10 +9,7 @@ pub struct IpFirewall {
 
 impl IpFirewall {
     pub fn new(policy: Policy) -> Self {
-        Self {
-            rules: HashMap::new(),
-            policy,
-        }
+        Self { rules: HashMap::new(), policy }
     }
 
     pub fn add_rule(&mut self, filter: Filter, priority: u8) {

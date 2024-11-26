@@ -105,19 +105,13 @@ impl ArpControllerInner {
         let settings = self.settings.clone();
 
         // 期限切れのエントリを削除
-        self.burst_count
-            .retain(|_, (time, _)| now.duration_since(*time) < settings.burst_window);
+        self.burst_count.retain(|_, (time, _)| now.duration_since(*time) < settings.burst_window);
 
-        self.normal_count
-            .retain(|_, (time, _)| now.duration_since(*time) < settings.normal_window);
+        self.normal_count.retain(|_, (time, _)| now.duration_since(*time) < settings.normal_window);
 
         // 古いエントリを削除してキャパシティを確保
         if self.normal_count.len() > settings.max_entries / 2 {
-            let mut entries: Vec<_> = self
-                .normal_count
-                .iter()
-                .map(|(k, (t, c))| (k.clone(), *t, *c))
-                .collect();
+            let mut entries: Vec<_> = self.normal_count.iter().map(|(k, (t, c))| (k.clone(), *t, *c)).collect();
 
             entries.sort_by(|a, b| b.1.cmp(&a.1));
 
@@ -127,9 +121,6 @@ impl ArpControllerInner {
             }
         }
 
-        info!(
-            "ARPコントローラーのクリーンアップを実行: アクティブペア={}",
-            self.normal_count.len()
-        );
+        info!("ARPコントローラーのクリーンアップを実行: アクティブペア={}", self.normal_count.len());
     }
 }

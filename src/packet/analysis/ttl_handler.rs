@@ -1,4 +1,4 @@
-use log::{info, debug};
+use log::{debug, info};
 
 pub struct TtlHandler {
     min_ttl: u8,
@@ -7,10 +7,7 @@ pub struct TtlHandler {
 
 impl TtlHandler {
     pub fn new(min_ttl: u8, ttl_decrease: u8) -> Self {
-        Self {
-            min_ttl,
-            ttl_decrease,
-        }
+        Self { min_ttl, ttl_decrease }
     }
 
     pub fn process_packet(&self, ethernet_frame: &mut [u8]) -> bool {
@@ -26,7 +23,7 @@ impl TtlHandler {
             other => {
                 debug!("非IP パケット: EtherType=0x{:04x}", other);
                 true
-            }
+            },
         }
     }
 
@@ -58,8 +55,10 @@ impl TtlHandler {
         // 新しいチェックサムを取得
         let new_checksum = u16::from_be_bytes([ip_packet[10], ip_packet[11]]);
 
-        info!("IPv4パケット処理: TTL {}→{} (減少量: {}), Checksum 0x{:04x}→0x{:04x}, パケット長 {} bytes",
-            current_ttl, new_ttl, self.ttl_decrease, old_checksum, new_checksum, packet_length);
+        info!(
+            "IPv4パケット処理: TTL {}→{} (減少量: {}), Checksum 0x{:04x}→0x{:04x}, パケット長 {} bytes",
+            current_ttl, new_ttl, self.ttl_decrease, old_checksum, new_checksum, packet_length
+        );
 
         // 詳細なヘッダー情報をデバッグログに出力
         debug!("IPv4ヘッダー詳細:");
@@ -92,9 +91,14 @@ impl TtlHandler {
         let new_hop_limit = current_hop_limit.saturating_sub(self.ttl_decrease);
         ip_packet[7] = new_hop_limit;
 
-        debug!("IPv6パケット処理: Hop Limit {}→{} (減少量: {}), パケット長 {} bytes (ペイロード長: {} bytes)",
-            current_hop_limit, new_hop_limit, self.ttl_decrease,
-            payload_length + 40, payload_length);
+        debug!(
+            "IPv6パケット処理: Hop Limit {}→{} (減少量: {}), パケット長 {} bytes (ペイロード長: {} bytes)",
+            current_hop_limit,
+            new_hop_limit,
+            self.ttl_decrease,
+            payload_length + 40,
+            payload_length
+        );
 
         // 詳細なヘッダー情報をデバッグログに出力
         debug!("IPv6ヘッダー詳細:");
@@ -103,18 +107,46 @@ impl TtlHandler {
         debug!("  Next Header: {}", ip_packet[6]);
 
         // Source IPv6アドレスの出力
-        debug!("  Source IPv6: {:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
-            ip_packet[8], ip_packet[9], ip_packet[10], ip_packet[11],
-            ip_packet[12], ip_packet[13], ip_packet[14], ip_packet[15],
-            ip_packet[16], ip_packet[17], ip_packet[18], ip_packet[19],
-            ip_packet[20], ip_packet[21], ip_packet[22], ip_packet[23]);
+        debug!(
+            "  Source IPv6: {:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
+            ip_packet[8],
+            ip_packet[9],
+            ip_packet[10],
+            ip_packet[11],
+            ip_packet[12],
+            ip_packet[13],
+            ip_packet[14],
+            ip_packet[15],
+            ip_packet[16],
+            ip_packet[17],
+            ip_packet[18],
+            ip_packet[19],
+            ip_packet[20],
+            ip_packet[21],
+            ip_packet[22],
+            ip_packet[23]
+        );
 
         // Destination IPv6アドレスの出力
-        debug!("  Destination IPv6: {:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
-            ip_packet[24], ip_packet[25], ip_packet[26], ip_packet[27],
-            ip_packet[28], ip_packet[29], ip_packet[30], ip_packet[31],
-            ip_packet[32], ip_packet[33], ip_packet[34], ip_packet[35],
-            ip_packet[36], ip_packet[37], ip_packet[38], ip_packet[39]);
+        debug!(
+            "  Destination IPv6: {:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
+            ip_packet[24],
+            ip_packet[25],
+            ip_packet[26],
+            ip_packet[27],
+            ip_packet[28],
+            ip_packet[29],
+            ip_packet[30],
+            ip_packet[31],
+            ip_packet[32],
+            ip_packet[33],
+            ip_packet[34],
+            ip_packet[35],
+            ip_packet[36],
+            ip_packet[37],
+            ip_packet[38],
+            ip_packet[39]
+        );
 
         true
     }

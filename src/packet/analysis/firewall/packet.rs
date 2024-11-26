@@ -21,16 +21,7 @@ pub struct FirewallPacket {
 }
 
 impl FirewallPacket {
-    pub fn from_packet(
-        src_mac: MacAddr,
-        dst_mac: MacAddr,
-        ether_type: EtherType,
-        src_ip: IpAddr,
-        dst_ip: IpAddr,
-        ip_protocol: IpProtocol,
-        src_port: u16,
-        dst_port: u16,
-    ) -> Self {
+    pub fn from_packet(src_mac: MacAddr, dst_mac: MacAddr, ether_type: EtherType, src_ip: IpAddr, dst_ip: IpAddr, ip_protocol: IpProtocol, src_port: u16, dst_port: u16) -> Self {
         Self {
             src_mac,
             dst_mac,

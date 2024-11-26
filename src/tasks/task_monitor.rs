@@ -15,10 +15,7 @@ pub struct TaskMonitor {
 
 impl TaskMonitor {
     pub fn new(task_state: Arc<Mutex<TaskState>>, shutdown_timeout: Duration) -> Self {
-        Self {
-            task_state,
-            shutdown_timeout,
-        }
+        Self { task_state, shutdown_timeout }
     }
 
     pub async fn monitor_tasks(
@@ -29,15 +26,9 @@ impl TaskMonitor {
         mut shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(), TaskError> {
         // 初期状態の設定
-        self.update_task_state("reader", true)
-            .await
-            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("writer", true)
-            .await
-            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("analysis", true)
-            .await
-            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("reader", true).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("writer", true).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("analysis", true).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
 
         let result = loop {
             tokio::select! {
@@ -70,45 +61,29 @@ impl TaskMonitor {
         };
 
         // タスクの状態をクリーンアップ
-        self.update_task_state("reader", false)
-            .await
-            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("writer", false)
-            .await
-            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
-        self.update_task_state("analysis", false)
-            .await
-            .map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("reader", false).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("writer", false).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
+        self.update_task_state("analysis", false).await.map_err(|e| TaskError::TaskExecutionError(e.to_string()))?;
 
         result
     }
 
-    async fn handle_task_result(
-        &self,
-        result: Result<Result<(), String>, tokio::task::JoinError>,
-        task_name: &str,
-    ) -> Result<(), TaskError> {
+    async fn handle_task_result(&self, result: Result<Result<(), String>, tokio::task::JoinError>, task_name: &str) -> Result<(), TaskError> {
         self.update_task_state(task_name, false).await?;
 
         match result {
             Ok(Ok(_)) => {
                 debug!("{} タスクが正常に完了しました", task_name);
                 Ok(())
-            }
+            },
             Ok(Err(e)) => {
                 error!("{} タスクがエラーで終了しました: {}", task_name, e);
-                Err(TaskError::ExecutionError(format!(
-                    "{} タスクのエラー: {}",
-                    task_name, e
-                )))
-            }
+                Err(TaskError::ExecutionError(format!("{} タスクのエラー: {}", task_name, e)))
+            },
             Err(e) => {
                 error!("{} タスクがパニックで終了しました: {}", task_name, e);
-                Err(TaskError::PanicError(format!(
-                    "{} タスクがパニックしました",
-                    task_name
-                )))
-            }
+                Err(TaskError::PanicError(format!("{} タスクがパニックしました", task_name)))
+            },
         }
     }
 
@@ -134,12 +109,7 @@ impl TaskMonitor {
             "reader" => state.reader_active = active,
             "writer" => state.writer_active = active,
             "analysis" => state.analysis_active = active,
-            _ => {
-                return Err(TaskError::StateUpdateError(format!(
-                    "不明なタスク名が指定されました: {}",
-                    task_name
-                )))
-            }
+            _ => return Err(TaskError::StateUpdateError(format!("不明なタスク名が指定されました: {}", task_name))),
         }
         Ok(())
     }
