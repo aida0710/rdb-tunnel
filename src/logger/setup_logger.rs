@@ -14,27 +14,26 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<(), Box<dyn std::erro
     };
 
     // IDPSロガーの設定
-    idps_logger::set_log_file(&format!("../../{}", logger_config.idps_logger_file))?;
-    idps_logger::set_output_mode(log_mode);
-
-    // 通常のロガーの設定
-    /*let file: File = File::create(format!("../../{}", logger_config.normal_logger_file))
-    .map_err(|e| LoggerError::LogFileCreateError(e.to_string()))?;*/
+    idps_logger::set_idps_settings(log_mode, &format!("../../{}", logger_config.idps_logger_file), &*logger_config.idps_path_style).expect("IDPSロガーの設定に失敗しました");
 
     Builder::new()
         .filter_level(LevelFilter::Info)
-        .format(|buf, record| {
+        .format(move |buf, record| {
             writeln!(
                 buf,
-                "{} [{}] {} L:{} - {}",
+                "{} [{}] {}:{} - {}",
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
                 record.level(),
-                record.target(),
+                match logger_config.normal_path_style.as_str() {
+                    "file_path" => record.file().unwrap_or("file_pathが取得できませんでした"),
+                    "module_path" => record.module_path().unwrap_or("module_pathが取得できませんでした"),
+                    "none" => "",
+                    _ => record.file().unwrap_or("file_pathが取得できませんでした"),
+                },
                 record.line().unwrap_or(0),
-                record.args()
+                record.args(),
             )
         })
-        //.target(Target::Pipe(Box::new(file)))
         .target(Target::Stdout)
         .init();
 

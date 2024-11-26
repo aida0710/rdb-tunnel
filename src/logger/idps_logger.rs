@@ -15,10 +15,11 @@ pub enum OutputMode {
     None,
 }
 
-struct LogConfig {
+pub struct LogConfig {
     file: Option<Mutex<File>>,
     mode: OutputMode,
     file_path: Option<String>,
+    path_style: Option<String>,
 }
 
 static LOGGER: Lazy<Mutex<LogConfig>> = Lazy::new(|| {
@@ -26,6 +27,7 @@ static LOGGER: Lazy<Mutex<LogConfig>> = Lazy::new(|| {
         file: None,
         mode: OutputMode::All,
         file_path: None,
+        path_style: None,
     })
 });
 
@@ -52,53 +54,48 @@ fn create_log_file(file_path: &str) -> Result<File, LoggerError> {
     }
 }
 
-pub fn set_output_mode(mode: OutputMode) {
+pub fn set_idps_settings(mode: OutputMode, file_path: &str, path_style: &str) -> Result<(), LoggerError> {
     if let Ok(mut logger) = LOGGER.lock() {
         logger.mode = mode;
-
-        if (mode == OutputMode::FileOnly || mode == OutputMode::All) && logger.file.is_none() {
-            if let Some(path) = &logger.file_path {
-                logger.file = create_log_file(path).ok().map(Mutex::new);
-            }
-        }
-    }
-}
-
-pub fn set_log_file(file_path: &str) -> Result<(), LoggerError> {
-    if let Ok(mut logger) = LOGGER.lock() {
         logger.file_path = Some(file_path.to_string());
+        logger.path_style = Some(path_style.to_string());
 
-        if logger.mode == OutputMode::FileOnly || logger.mode == OutputMode::All {
+        if mode == OutputMode::FileOnly || mode == OutputMode::All {
             logger.file = create_log_file(file_path).ok().map(Mutex::new);
         }
+
         Ok(())
     } else {
-        Err(LoggerError::LogFileCreateError("Failed to lock logger".to_string()))
+        Err(LoggerError::LoggerLockError("Loggerのロックに失敗しました".to_string()))
     }
 }
 
-pub fn write_log(message: &str, module_path: &str, line: u32) {
-    if let Ok(logger) = LOGGER.lock() {
-        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        let log_message = format!("{} [IDPS] {} L:{} - {}\n", timestamp, module_path, line, message);
+pub fn write_log(message: &str, log_file_path: &str, module_path: &str, line: u32) {
+    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
 
-        match logger.mode {
-            OutputMode::All | OutputMode::FileOnly => {
+    if let Ok(logger) = LOGGER.lock() {
+        if logger.file_path.is_some() {
+            let path_info = match logger.path_style.as_deref() {
+                Some("file_path") => log_file_path,
+                Some("module_path") => module_path,
+                Some("none") => "",
+                _ => log_file_path,
+            };
+
+            let final_log_message = format!("{} [IDPS] {}:{} - {}\n", timestamp, path_info, line, message);
+
+            if matches!(logger.mode, OutputMode::All | OutputMode::FileOnly) {
                 if let Some(file_mutex) = &logger.file {
                     if let Ok(mut file) = file_mutex.lock() {
-                        let _ = file.write_all(log_message.as_bytes());
+                        let _ = file.write_all(final_log_message.as_bytes());
                         let _ = file.flush();
                     }
                 }
-            },
-            _ => {},
-        }
+            }
 
-        match logger.mode {
-            OutputMode::All | OutputMode::ConsoleOnly => {
-                print!("{}", log_message);
-            },
-            _ => {},
+            if matches!(logger.mode, OutputMode::All | OutputMode::ConsoleOnly) {
+                print!("{}", final_log_message);
+            }
         }
     }
 }
@@ -108,6 +105,7 @@ macro_rules! idps_log {
     ($($arg:tt)*) => {{
         $crate::logger::idps_logger::write_log(
             &format!($($arg)*),
+            file!(),
             module_path!(),
             line!()
         );

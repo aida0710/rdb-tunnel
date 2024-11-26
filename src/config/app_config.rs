@@ -26,6 +26,8 @@ pub struct LoggerConfig {
     pub normal_logger_file: String,
     pub idps_logger_file: String,
     pub idps_log_mode: String,
+    pub normal_path_style: String,
+    pub idps_path_style: String,
 }
 
 #[derive(Debug, Clone)]
@@ -102,6 +104,8 @@ impl AppConfig {
                 normal_logger_file: get_env_var("NORMAL_LOGGER_FILE")?,
                 idps_logger_file: get_env_var("IDPS_LOGGER_FILE")?,
                 idps_log_mode: get_env_var("IDPS_LOG_MODE")?,
+                normal_path_style: get_env_var("NORMAL_PATH_STYLE")?,
+                idps_path_style: get_env_var("IDPS_PATH_STYLE")?,
             },
         })
     }
