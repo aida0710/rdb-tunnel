@@ -5,48 +5,22 @@ edition = "2021"
 authors = ["相田 優希 <51500566+aida0710@users.noreply.github.com>"]
 
 [dependencies]
-# === ネットワーキング関連 ===
-# 低レベルのネットワークパケット操作
-pnet = { version = "0.35" }
-# 仮想ネットワークインターフェース (TUN/TAP)
-tun-tap = { version = "0.1" }
-# Linuxネットワーク設定 (netlink)
-rtnetlink = { version = "0.14" }
-# IPアドレス/サブネット操作
-ipnetwork = { version = "0.20" }
-
-# === データベース関連 ===
-# 非同期PostgreSQLクライアント
-tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
-# コネクションプール
+async-trait = { version = "0.1" }
 bb8 = { version = "0.8" }
 bb8-postgres = { version = "0.8" }
-# PostgreSQL型システム
-postgres-types = { version = "0.2" }
-
-# === 非同期処理・並行処理 ===
-# 非同期ランタイムとツール
-tokio = { version = "1.41", features = ["full"] }
-# 非同期トレイト実装
-async-trait = { version = "0.1" }
-# Future型と非同期プログラミング
-futures = { version = "0.3.31" }
-
-# === エラー処理・ロギング ===
-# カスタムエラー型
-thiserror = { version = "2.0.3" }
-# ロギングファサード
-log = { version = "0.4" }
-# ロギング実装
-env_logger = { version = "0.11.5" }
-
-# === ユーティリティ ===
-# 環境変数管理
-dotenv = { version = "0.15" }
-# 日付と時刻操作
-chrono = { version = "0.4" }
-# 遅延初期化された静的変数
-lazy_static = { version = "1.5" }
-# バイトバッファ操作
 bytes = { version = "1.8" }
-once_cell = "1.20.2"
+chrono = { version = "0.4" }
+dotenv = { version = "0.15" }
+env_logger = { version = "0.11.5" }
+futures = { version = "0.3.31" }
+ipnetwork = { version = "0.20" }
+lazy_static = { version = "1.5" }
+log = { version = "0.4" }
+once_cell = { version = "1.20.2" }
+pnet = { version = "0.35" }
+postgres-types = { version = "0.2" }
+rtnetlink = { version = "0.14" }
+thiserror = { version = "2.0.3" }
+tokio = { version = "1.41", features = ["full"] }
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
+tun-tap = { version = "0.1" }
