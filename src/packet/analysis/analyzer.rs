@@ -1,5 +1,5 @@
 use crate::idps_log;
-use crate::packet::analysis::duplicate_tracker::PacketTracker;
+use crate::packet::analysis::arp_controller::ArpController;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
@@ -9,9 +9,8 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{trace, info};
+use log::{debug, info};
 use std::net::{IpAddr, Ipv4Addr};
-use crate::packet::analysis::arp_controller::ArpController;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -29,7 +28,10 @@ pub enum AnalyzeResult {
 lazy_static! {
     static ref FIREWALL: IpFirewall = {
         let mut fw = IpFirewall::new(Policy::Blacklist);
-        fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
+        fw.add_rule(
+            Filter::DstIpAddress("160.251.175.134".parse().unwrap()),
+            100,
+        );
         fw.add_rule(Filter::SrcIpAddress("160.251.175.134".parse().unwrap()), 99);
         fw.add_rule(Filter::DstPort(5432), 95);
         fw.add_rule(Filter::SrcPort(5432), 90);
@@ -40,15 +42,13 @@ lazy_static! {
 }
 
 pub struct PacketAnalyzer {
-    tracker: PacketTracker,
-    arp_controller: ArpController,  // 追加
+    arp_controller: ArpController, // 追加
 }
 
 impl PacketAnalyzer {
     pub fn new() -> Self {
         Self {
-            tracker: PacketTracker::new(),
-            arp_controller: ArpController::new(),  // 追加
+            arp_controller: ArpController::new(), // 追加
         }
     }
 
@@ -78,8 +78,9 @@ impl PacketAnalyzer {
 
         // ARPパケットの制御（追加）
         if ethernet_header.ether_type == EtherType::ARP {
-            if !self.arp_controller.should_process(src_ip, dst_ip).await {  // .awaitを追加
-                info!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
+            if !self.arp_controller.should_process(src_ip, dst_ip).await {
+                // .awaitを追加
+                debug!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
                 return AnalyzeResult::Reject;
             }
         }
@@ -93,7 +94,7 @@ impl PacketAnalyzer {
             dst_ip,
             ip_protocol,
             src_port,
-            dst_port
+            dst_port,
         );
         if !FIREWALL.check(&firewall_packet) {
             return AnalyzeResult::Reject;
@@ -128,8 +129,8 @@ impl PacketAnalyzer {
         ethernet_frame: &[u8],
         ether_type: EtherType,
     ) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16, usize), AnalyzeResult> {
-        let mut src_ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
-        let mut dst_ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
+        let src_ip;
+        let dst_ip;
         let mut src_port = 0u16;
         let mut dst_port = 0u16;
         let mut payload_offset = 14usize;
