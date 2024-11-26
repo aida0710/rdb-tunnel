@@ -20,4 +20,7 @@ pub enum PacketReaderError {
 
     #[error("パケット送信エラー: {0}")]
     SendError(String),
+
+    #[error("タスクの結合中にエラーが発生しました: {0}")]
+    TaskJoinError(String)
 }

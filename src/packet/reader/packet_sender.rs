@@ -1,16 +1,15 @@
 use crate::packet::reader::error::PacketReaderError;
 use crate::packet::Packet;
-use log::{debug, error, info, trace};
+use log::{debug, info, trace};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface};
-use crate::idps_log;
 
 pub struct PacketSender;
 
 impl PacketSender {
     const MAX_PACKET_SIZE: usize = 1500;
 
-    pub async fn send_packet(
+    pub fn send_packet(
         interface: &NetworkInterface,
         packet: &Packet,
     ) -> Result<(), PacketReaderError> {
@@ -22,12 +21,9 @@ impl PacketSender {
             )));
         }
 
-        let (mut tx, _) = match datalink::channel(interface, Default::default()) {
-            Ok(Ethernet(tx, rx)) => (tx, rx),
-            Ok(_) => {
-                error!("未対応のチャネルタイプです");
-                return Err(PacketReaderError::UnsupportedChannelType);
-            }
+        let (mut tx) = match datalink::channel(interface, Default::default()) {
+            Ok(Ethernet(tx, _)) => tx,
+            Ok(_) => return Err(PacketReaderError::UnsupportedChannelType),
             Err(e) => return Err(PacketReaderError::NetworkError(e.to_string())),
         };
 
@@ -42,16 +38,10 @@ impl PacketSender {
                 );
                 Ok(())
             }
-            Some(Err(e)) => {
-                error!("パケット送信に失敗しました: {}", e);
-                Err(PacketReaderError::SendError(e.to_string()))
-            }
-            None => {
-                idps_log!("宛先が指定されていないためスキップ");
-                Err(PacketReaderError::SendError(
-                    "宛先が指定されていません".to_string(),
-                ))
-            }
+            Some(Err(e)) => Err(PacketReaderError::SendError(e.to_string())),
+            None => Err(PacketReaderError::SendError(
+                "宛先が指定されていません".into(),
+            )),
         }
     }
 }
