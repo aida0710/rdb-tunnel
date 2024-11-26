@@ -11,7 +11,7 @@ use crate::config::AppConfig;
 use crate::database::Database;
 use crate::error::InitProcessError;
 use crate::interface::{select_interface, setup_interface};
-use crate::logger::setup_logger;
+use crate::logger::setup_logger::setup_logger;
 use crate::tasks::TaskScheduler;
 use log::{error, info};
 use tun_tap::{Iface, Mode};
@@ -24,6 +24,9 @@ async fn main() -> Result<(), InitProcessError> {
 
     // ロガーのセットアップ
     setup_logger(config.logger_config).map_err(|e| InitProcessError::LoggerError(e.to_string()))?;
+
+    info!("loggerが正常にセットアップされました");
+    idps_log!("idps logの表示が有効になっています");
 
     // データベース接続
     Database::connect(
@@ -57,8 +60,6 @@ async fn main() -> Result<(), InitProcessError> {
     )
     .map_err(|e| InitProcessError::InterfaceSelectionError(e.to_string()))?;
     info!("デバイスの選択に成功しました: {}", interface.name);
-
-    idps_log!("idps logの表示が有効になっています");
 
     // タスクスケジューラの起動
     let scheduler = TaskScheduler::new(interface);
