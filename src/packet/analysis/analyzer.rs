@@ -1,10 +1,10 @@
 use crate::idps_log;
 use crate::packet::analysis::arp_controller::ArpController;
+use crate::packet::analysis::duplicate_checker::DuplicateChecker;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_header;
 use crate::packet::analysis::transport::parse_transport_header;
-use crate::packet::analysis::ttl_handler::TtlHandler;
 use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
@@ -40,17 +40,17 @@ lazy_static! {
         fw
     };
     // TTLハンドラーをグローバルで保持し、状態を維持
-    static ref TTL_HANDLER: Mutex<TtlHandler> = Mutex::new(TtlHandler::new(1, 1));
+    static ref DUPLICATE_CHECKER: Mutex<DuplicateChecker> = Mutex::new(DuplicateChecker::new());
 }
 
 pub struct PacketAnalyzer {
-    arp_controller: ArpController, // 追加
+    arp_controller: ArpController,
 }
 
 impl PacketAnalyzer {
     pub fn new() -> Self {
         Self {
-            arp_controller: ArpController::new(), // 追加
+            arp_controller: ArpController::new(),
         }
     }
 
@@ -73,10 +73,9 @@ impl PacketAnalyzer {
             Err(e) => return e,
         };
 
-        // ARPパケットの制御（追加）
+        // ARPパケットの制御
         if ethernet_header.ether_type == EtherType::ARP {
             if !self.arp_controller.should_process(src_ip, dst_ip).await {
-                // .awaitを追加
                 debug!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
                 return AnalyzeResult::Reject;
             }
@@ -97,34 +96,16 @@ impl PacketAnalyzer {
             return AnalyzeResult::Reject;
         }
 
-        // TTL処理（ARPパケット以外）
+        // 重複チェック（ARPパケット以外）
         if ethernet_header.ether_type != EtherType::ARP {
-            let mut frame_copy = ethernet_frame.to_vec();
-
-            let mut ttl_handler = TTL_HANDLER.lock().await;
-            if !ttl_handler.process_packet(&mut frame_copy) {
-                debug!("パケットループを検出: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
-                return AnalyzeResult::Reject;
+            let mut checker = DUPLICATE_CHECKER.lock().await;
+            if let Some(result) = checker.check_packet(ethernet_frame) {
+                return result;
             }
-
-            info!("通過パケット: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
-
-            return AnalyzeResult::Accept(PacketData {
-                src_mac: ethernet_header.src_mac,
-                dst_mac: ethernet_header.dst_mac,
-                ether_type: ethernet_header.ether_type,
-                src_ip: InetAddr(src_ip),
-                dst_ip: InetAddr(dst_ip),
-                src_port: src_port as i32,
-                dst_port: dst_port as i32,
-                ip_protocol,
-                timestamp: Utc::now(),
-                data: frame_copy[payload_offset..].to_vec(),
-                raw_packet: frame_copy, // 更新されたフレームを使用
-            });
         }
 
-        // ARPパケットなど
+        // info!("通過パケット: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
+
         AnalyzeResult::Accept(PacketData {
             src_mac: ethernet_header.src_mac,
             dst_mac: ethernet_header.dst_mac,
@@ -158,10 +139,6 @@ impl PacketAnalyzer {
                     dst_ip = ip_header.dst_ip;
                     ip_protocol = ip_header.ip_protocol;
                     payload_offset = 14 + ip_header.header_length;
-
-                    if !ip_header.ip_protocol.is_icmp() {
-                        return Err(AnalyzeResult::Reject);
-                    }
 
                     if let Some((transport_header, _)) = parse_transport_header(ip_data) {
                         src_port = transport_header.src_port;
