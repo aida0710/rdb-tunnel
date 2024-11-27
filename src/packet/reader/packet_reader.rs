@@ -24,7 +24,7 @@ impl PacketReader {
                     });
 
                     join_all(sends).await;
-                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    tokio::time::sleep(Duration::from_millis(30)).await;
                 },
                 Err(e) => {
                     error!("パケットの取得に失敗しました: {:?}", e);
