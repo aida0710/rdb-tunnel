@@ -9,8 +9,9 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{debug, info};
+use log::{debug, info, warn};
 use std::net::{IpAddr, Ipv4Addr};
+use std::sync::Mutex;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -34,8 +35,12 @@ lazy_static! {
         fw.add_rule(Filter::SrcPort(5432), 90);
         fw.add_rule(Filter::DstPort(2233), 85);
         fw.add_rule(Filter::SrcPort(2233), 80);
+        fw.add_rule(Filter::DstPort(22), 75);
+        fw.add_rule(Filter::SrcPort(22), 70);
         fw
     };
+    // TTLハンドラーをグローバルで保持し、状態を維持
+    static ref TTL_HANDLER: Mutex<TtlHandler> = Mutex::new(TtlHandler::new(1, 1));
 }
 
 pub struct PacketAnalyzer {
@@ -94,14 +99,38 @@ impl PacketAnalyzer {
 
         // TTL処理（ARPパケット以外）
         if ethernet_header.ether_type != EtherType::ARP {
-            let ttl_handler = TtlHandler::new(1, 1);
+            // フレームをコピーしてTTL処理を実施
             let mut frame_copy = ethernet_frame.to_vec();
-            if !ttl_handler.process_packet(&mut frame_copy) {
-                info!("TTL処理によりパケットが拒否されました");
-                return AnalyzeResult::Reject;
-            }
+
+            // TTLハンドラーのロックを取得して処理
+            return if let Ok(mut ttl_handler) = TTL_HANDLER.lock() {
+                if !ttl_handler.process_packet(&mut frame_copy) {
+                    info!("パケットループを検出: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
+                    return AnalyzeResult::Reject;
+                }
+
+                // TTL処理が成功した場合、更新されたフレームを使用
+                AnalyzeResult::Accept(PacketData {
+                    src_mac: ethernet_header.src_mac,
+                    dst_mac: ethernet_header.dst_mac,
+                    ether_type: ethernet_header.ether_type,
+                    src_ip: InetAddr(src_ip),
+                    dst_ip: InetAddr(dst_ip),
+                    src_port: src_port as i32,
+                    dst_port: dst_port as i32,
+                    ip_protocol,
+                    timestamp: Utc::now(),
+                    data: frame_copy[payload_offset..].to_vec(),
+                    raw_packet: frame_copy, // 更新されたフレームを使用
+                })
+            } else {
+                // TTLハンドラーのロック取得に失敗した場合
+                warn!("TTLハンドラーのロック取得に失敗");
+                AnalyzeResult::Reject
+            };
         }
 
+        // ARPパケットなど
         AnalyzeResult::Accept(PacketData {
             src_mac: ethernet_header.src_mac,
             dst_mac: ethernet_header.dst_mac,
@@ -135,10 +164,6 @@ impl PacketAnalyzer {
                     dst_ip = ip_header.dst_ip;
                     ip_protocol = ip_header.ip_protocol;
                     payload_offset = 14 + ip_header.header_length;
-
-                    if ip_protocol.value() != 1 && ip_protocol.value() != 58 {
-                        return Err(AnalyzeResult::Reject);
-                    }
 
                     if let Some((transport_header, _)) = parse_transport_header(ip_data) {
                         src_port = transport_header.src_port;
