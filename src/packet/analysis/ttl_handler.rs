@@ -15,7 +15,7 @@ pub struct TtlHandler {
 struct PacketIdentifier {
     src_ip: IpAddr,
     dst_ip: IpAddr,
-    icmp_seq: u16,
+    frame_content: Vec<u8>,
 }
 
 struct PacketState {
@@ -40,7 +40,7 @@ impl TtlHandler {
 
         if let Some(identifier) = self.extract_packet_identifier(ethernet_frame) {
             if self.is_duplicate_packet(&identifier, ethernet_frame) {
-                debug!("重複パケットを検出: {:?}", identifier);
+                debug!("重複パケットを検出: src={}, dst={}", identifier.src_ip, identifier.dst_ip);
                 return false;
             }
 
@@ -48,7 +48,6 @@ impl TtlHandler {
                 return false;
             }
 
-            // 正常なパケットの履歴を更新して処理を継続
             self.update_packet_history(identifier, ethernet_frame);
             return true;
         }
@@ -57,13 +56,21 @@ impl TtlHandler {
     }
 
     fn extract_packet_identifier(&self, frame: &[u8]) -> Option<PacketIdentifier> {
+        if frame.len() < 34 {
+            return None;
+        }
+
         let src_ip = self.extract_ip_address(&frame[26..30]);
         let dst_ip = self.extract_ip_address(&frame[30..34]);
 
-        // ICMPシーケンス番号の抽出（存在する場合）
-        let icmp_seq = if frame.len() >= 40 { u16::from_be_bytes([frame[38], frame[39]]) } else { 0 };
+        // TTLフィールドを除いた完全なフレームのコピーを作成
+        let mut frame_content = frame.to_vec();
+        if frame_content.len() > 22 {
+            // TTLフィールドをゼロに設定
+            frame_content[22] = 0;
+        }
 
-        Some(PacketIdentifier { src_ip, dst_ip, icmp_seq })
+        Some(PacketIdentifier { src_ip, dst_ip, frame_content })
     }
 
     fn extract_ip_address(&self, bytes: &[u8]) -> IpAddr {
@@ -72,16 +79,20 @@ impl TtlHandler {
 
     fn is_duplicate_packet(&self, identifier: &PacketIdentifier, frame: &[u8]) -> bool {
         if let Some(state) = self.packet_history.get(identifier) {
-            //100ms以内に3回以上の同一パケット検出でループと判定
-            if state.processed_count > 3 && state.first_seen.elapsed() < Duration::from_millis(100) {
+            let current_ttl = frame[22];
+
+            //100ms以内に2回以上の同一パケット検出でループと判定
+            if state.processed_count > 2 && state.first_seen.elapsed() < Duration::from_millis(100) {
+                debug!(
+                    "短時間での重複パケットを検出: src={}, dst={}, count={}",
+                    identifier.src_ip, identifier.dst_ip, state.processed_count
+                );
                 return true;
             }
 
-            // 直前のTTLより値が大きい場合でループと判定
+            // TTL値の不自然な変化を検出
             if !state.ttl_history.is_empty() {
-                let current_ttl = frame[22];
                 let last_ttl = state.ttl_history.last().unwrap();
-
                 if current_ttl > *last_ttl {
                     debug!("TTL値の不自然な増加を検出: {} -> {}", last_ttl, current_ttl);
                     return true;
@@ -122,7 +133,6 @@ impl TtlHandler {
 
     fn maybe_cleanup(&mut self) {
         let now = Instant::now();
-        // 設定された間隔でクリーンアップを実行
         if now.duration_since(self.last_cleanup) >= self.cleanup_interval {
             self.cleanup();
             self.last_cleanup = now;
