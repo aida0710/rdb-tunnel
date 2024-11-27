@@ -32,7 +32,7 @@ impl DuplicateChecker {
         if let Some(identifier) = self.extract_packet_identifier(ethernet_frame) {
             // すでに履歴にあれば重複
             if self.packet_history.contains(&identifier) {
-                info!("重複パケットを検出: src={}, dst={}", identifier.src_ip, identifier.dst_ip);
+                debug!("重複パケットを検出: src={}, dst={}", identifier.src_ip, identifier.dst_ip);
                 return Some(AnalyzeResult::Reject);
             }
 
