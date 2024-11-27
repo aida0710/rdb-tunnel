@@ -103,9 +103,11 @@ impl PacketAnalyzer {
 
             let mut ttl_handler = TTL_HANDLER.lock().await;
             if !ttl_handler.process_packet(&mut frame_copy) {
-                info!("パケットループを検出: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
+                debug!("パケットループを検出: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
                 return AnalyzeResult::Reject;
             }
+
+            info!("通過パケット: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
 
             return AnalyzeResult::Accept(PacketData {
                 src_mac: ethernet_header.src_mac,

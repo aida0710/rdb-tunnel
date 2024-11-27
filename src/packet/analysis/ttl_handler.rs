@@ -78,27 +78,32 @@ impl TtlHandler {
     }
 
     fn is_duplicate_packet(&self, identifier: &PacketIdentifier, frame: &[u8]) -> bool {
+        // 完全一致パケットを検出
         if let Some(state) = self.packet_history.get(identifier) {
             let current_ttl = frame[22];
 
-            //100ms以内に2回以上の同一パケット検出でループと判定
-            if state.processed_count > 2 && state.first_seen.elapsed() < Duration::from_millis(100) {
-                debug!(
-                    "短時間での重複パケットを検出: src={}, dst={}, count={}",
+            // 短時間での同一パケットの検出
+            if state.processed_count > 2 && state.first_seen.elapsed() < Duration::from_millis(300) {
+                info!(
+                    "短時間での同一パケット検出: src={}, dst={}, count={}",
                     identifier.src_ip, identifier.dst_ip, state.processed_count
                 );
                 return true;
             }
 
-            // TTL値の不自然な変化を検出
+            // 同一パケットでのTTL値の不自然な変化を検出
             if !state.ttl_history.is_empty() {
                 let last_ttl = state.ttl_history.last().unwrap();
                 if current_ttl > *last_ttl {
-                    debug!("TTL値の不自然な増加を検出: {} -> {}", last_ttl, current_ttl);
+                    info!(
+                        "同一パケットでのTTL値の不自然な増加: src={}, dst={}, TTL: {} -> {}",
+                        identifier.src_ip, identifier.dst_ip, last_ttl, current_ttl
+                    );
                     return true;
                 }
             }
         }
+
         false
     }
 
