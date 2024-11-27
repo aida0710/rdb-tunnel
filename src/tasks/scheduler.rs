@@ -13,14 +13,12 @@ use tokio::time::Duration;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1000);
 
-// 各タスクのハンドルをまとめた構造体
 struct TaskHandles {
     reader: JoinHandle<Result<(), String>>,
     writer: JoinHandle<Result<(), String>>,
     analysis: JoinHandle<Result<(), String>>,
 }
 
-// パケット処理の各タスクを管理し、実行するスケジューラ
 pub struct TaskScheduler {
     task_state: Arc<Mutex<TaskState>>,
     shutdown_tx: broadcast::Sender<()>,
@@ -37,7 +35,6 @@ impl TaskScheduler {
         }
     }
 
-    // メインのタスク実行関数
     pub async fn run(&self) -> Result<(), TaskError> {
         info!("タスクスケジューラを起動しています");
         let monitor = TaskMonitor::new(self.task_state.clone(), SHUTDOWN_TIMEOUT);
@@ -47,7 +44,6 @@ impl TaskScheduler {
         monitor.monitor_tasks(handles.reader, handles.writer, handles.analysis, self.shutdown_tx.subscribe()).await
     }
 
-    // 全タスクの生成と起動を行う
     fn spawn_all_tasks(&self) -> TaskHandles {
         TaskHandles {
             reader: self.spawn_reader_task(),
@@ -56,7 +52,6 @@ impl TaskScheduler {
         }
     }
 
-    // パケット読み取りタスクの生成
     fn spawn_reader_task(&self) -> JoinHandle<Result<(), String>> {
         let interface = self.interface.clone();
         let mut shutdown_rx = self.shutdown_tx.subscribe();
@@ -77,7 +72,6 @@ impl TaskScheduler {
         })
     }
 
-    // パケット書き込みタスクの生成
     fn spawn_writer_task(&self) -> JoinHandle<Result<(), String>> {
         let mut shutdown_rx = self.shutdown_tx.subscribe();
         let writer = PacketWriter::default();
@@ -96,7 +90,6 @@ impl TaskScheduler {
         })
     }
 
-    // パケット分析タスクの生成
     fn spawn_analysis_task(&self) -> JoinHandle<Result<(), String>> {
         let interface = self.interface.clone();
         let mut shutdown_rx = self.shutdown_tx.subscribe();
