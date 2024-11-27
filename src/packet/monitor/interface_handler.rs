@@ -3,6 +3,7 @@ use crate::packet::writer::PacketWriter;
 use log::{error, info};
 use pnet::datalink::{self, Channel::Ethernet, Config, NetworkInterface};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 pub struct InterfaceHandler {
@@ -16,9 +17,9 @@ impl InterfaceHandler {
 
     pub async fn start(&self) -> Result<(), MonitorError> {
         let config = Config {
-            write_buffer_size: 4096 * 6,
-            read_buffer_size: 4096 * 6,
-            read_timeout: None,
+            write_buffer_size: 4096,
+            read_buffer_size: 4096,
+            read_timeout: Some(Duration::from_millis(100)),
             write_timeout: None,
             channel_type: datalink::ChannelType::Layer2,
             bpf_fd_attempts: 1000,
@@ -49,6 +50,10 @@ impl InterfaceHandler {
                         }
                     },
                     Err(e) => {
+                        if e.to_string() == "Timed out" {
+                            // タイムアウトの場合は継続
+                            continue;
+                        }
                         error!("パケット読み取りエラー: {}", e);
                         break;
                     },
