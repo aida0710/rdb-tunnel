@@ -29,4 +29,7 @@ pub enum DatabaseError {
 
     #[error("データベースプールの取得に失敗しました: {0}")]
     PoolRetrievalError(String),
+
+    #[error("トランザクション処理に失敗しました: {0}")]
+    TransactionError(String),
 }
