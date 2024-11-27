@@ -1,4 +1,4 @@
-use log::{debug, info, warn};
+use log::{debug, info};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::time::{Duration, Instant};

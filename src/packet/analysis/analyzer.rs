@@ -9,9 +9,9 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{debug, info, warn};
+use log::{debug, info};
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -99,35 +99,27 @@ impl PacketAnalyzer {
 
         // TTL処理（ARPパケット以外）
         if ethernet_header.ether_type != EtherType::ARP {
-            // フレームをコピーしてTTL処理を実施
             let mut frame_copy = ethernet_frame.to_vec();
 
-            // TTLハンドラーのロックを取得して処理
-            return if let Ok(mut ttl_handler) = TTL_HANDLER.lock() {
-                if !ttl_handler.process_packet(&mut frame_copy) {
-                    info!("パケットループを検出: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
-                    return AnalyzeResult::Reject;
-                }
+            let mut ttl_handler = TTL_HANDLER.lock().await;
+            if !ttl_handler.process_packet(&mut frame_copy) {
+                info!("パケットループを検出: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
+                return AnalyzeResult::Reject;
+            }
 
-                // TTL処理が成功した場合、更新されたフレームを使用
-                AnalyzeResult::Accept(PacketData {
-                    src_mac: ethernet_header.src_mac,
-                    dst_mac: ethernet_header.dst_mac,
-                    ether_type: ethernet_header.ether_type,
-                    src_ip: InetAddr(src_ip),
-                    dst_ip: InetAddr(dst_ip),
-                    src_port: src_port as i32,
-                    dst_port: dst_port as i32,
-                    ip_protocol,
-                    timestamp: Utc::now(),
-                    data: frame_copy[payload_offset..].to_vec(),
-                    raw_packet: frame_copy, // 更新されたフレームを使用
-                })
-            } else {
-                // TTLハンドラーのロック取得に失敗した場合
-                warn!("TTLハンドラーのロック取得に失敗");
-                AnalyzeResult::Reject
-            };
+            return AnalyzeResult::Accept(PacketData {
+                src_mac: ethernet_header.src_mac,
+                dst_mac: ethernet_header.dst_mac,
+                ether_type: ethernet_header.ether_type,
+                src_ip: InetAddr(src_ip),
+                dst_ip: InetAddr(dst_ip),
+                src_port: src_port as i32,
+                dst_port: dst_port as i32,
+                ip_protocol,
+                timestamp: Utc::now(),
+                data: frame_copy[payload_offset..].to_vec(),
+                raw_packet: frame_copy, // 更新されたフレームを使用
+            });
         }
 
         // ARPパケットなど
