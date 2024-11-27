@@ -157,6 +157,10 @@ impl PacketAnalyzer {
                     ip_protocol = ip_header.ip_protocol;
                     payload_offset = 14 + ip_header.header_length;
 
+                    if !ip_header.ip_protocol.is_icmp() {
+                        return Err(AnalyzeResult::Reject);
+                    }
+
                     if let Some((transport_header, _)) = parse_transport_header(ip_data) {
                         src_port = transport_header.src_port;
                         dst_port = transport_header.dst_port;
