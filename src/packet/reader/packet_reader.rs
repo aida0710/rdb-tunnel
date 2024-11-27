@@ -14,10 +14,10 @@ impl PacketReader {
         loop {
             match PacketRepository::get_filtered_packets(false, None).await {
                 Ok(packets) => {
-                    let sends = packets.into_iter().map(|packet| {
+                    let sends = packets.into_iter().map(|raw_packet| {
                         let interface_clone = interface.clone();
                         tokio::spawn(async move {
-                            if let Err(e) = PacketSender::send_packet(&interface_clone, &packet).await {
+                            if let Err(e) = PacketSender::send_packet(&interface_clone, raw_packet).await {
                                 error!("パケットの送信に失敗しました: {:?}", e);
                             }
                         })
@@ -28,8 +28,8 @@ impl PacketReader {
                 },
                 Err(e) => {
                     error!("パケットの取得に失敗しました: {:?}", e);
-                    // エラーが発生しても継続
-                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    continue;
                 },
             }
         }
