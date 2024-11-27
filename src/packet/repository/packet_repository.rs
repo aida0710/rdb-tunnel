@@ -9,7 +9,7 @@ use tokio_postgres::types::ToSql;
 pub struct PacketRepository;
 
 impl PacketRepository {
-    const CHUNK_SIZE: usize = 150;
+    const CHUNK_SIZE: usize = 50;
     const MAX_RETRIES: u64 = 3;
 
     pub async fn bulk_insert(packets: Vec<PacketData>) -> Result<(), DatabaseError> {
