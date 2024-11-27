@@ -3,13 +3,14 @@ use crate::packet::types::PacketData;
 use crate::packet::Packet;
 use chrono::{DateTime, Utc};
 use log::info;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio_postgres::types::ToSql;
 
 pub struct PacketRepository;
 
 impl PacketRepository {
-    const CHUNK_SIZE: usize = 1000;
+    const CHUNK_SIZE: usize = 50;
+    const MAX_RETRIES: u64 = 3;
 
     pub async fn bulk_insert(packets: Vec<PacketData>) -> Result<(), DatabaseError> {
         if packets.is_empty() {
@@ -20,15 +21,35 @@ impl PacketRepository {
         let start_time = Instant::now();
         let mut processed = 0;
 
-        for chunk in packets.chunks(Self::CHUNK_SIZE) {
-            let (query, params) = Self::build_bulk_insert_query(chunk);
-            let result = db.execute(&query, &params).await? as usize;
-            processed += result;
+        for (chunk_idx, chunk) in packets.chunks(Self::CHUNK_SIZE).enumerate() {
+            let mut retries = 0;
+            loop {
+                match Self::insert_chunk(db, chunk).await {
+                    Ok(count) => {
+                        processed += count;
+                        break;
+                    },
+                    Err(e) if retries < Self::MAX_RETRIES => {
+                        log::warn!("チャンク {}の挿入に失敗（リトライ {}/{}）: {:?}", chunk_idx, retries + 1, Self::MAX_RETRIES, e);
+                        retries += 1;
+                        tokio::time::sleep(Duration::from_millis(100 * retries)).await;
+                    },
+                    Err(e) => return Err(e),
+                }
+            }
+
+            // チャンク間で小さな待機を入れる
+            tokio::time::sleep(Duration::from_millis(10)).await;
         }
 
         info!("{}個のパケットを{}秒で一括挿入しました", processed, start_time.elapsed().as_secs_f64());
 
         Ok(())
+    }
+
+    async fn insert_chunk(db: &Database, chunk: &[PacketData]) -> Result<usize, DatabaseError> {
+        let (query, params) = Self::build_bulk_insert_query(chunk);
+        db.execute(&query, &params).await.map(|r| r as usize)
     }
 
     fn build_bulk_insert_query(packets: &[PacketData]) -> (String, Vec<&(dyn ToSql + Sync)>) {
@@ -83,9 +104,9 @@ impl PacketRepository {
     pub async fn get_filtered_packets(is_first: bool, last_timestamp: Option<&DateTime<Utc>>) -> Result<Vec<Packet>, DatabaseError> {
         let db = Database::get_database();
         let query = if is_first {
-            "SELECT * FROM packets WHERE timestamp >= NOW() - INTERVAL '8 seconds' ORDER BY timestamp ASC"
+            "SELECT * FROM packets WHERE timestamp >= NOW() - INTERVAL '4 seconds' ORDER BY timestamp ASC LIMIT 1000"
         } else {
-            "SELECT * FROM packets WHERE timestamp > $1 ORDER BY timestamp ASC"
+            "SELECT * FROM packets WHERE timestamp > $1 ORDER BY timestamp ASC LIMIT 1000"
         };
 
         let fallback_time = Utc::now() - chrono::Duration::seconds(5);

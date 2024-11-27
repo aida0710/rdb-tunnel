@@ -16,14 +16,15 @@ impl DatabasePool {
     pub async fn new(connection_string: &str) -> Result<Self, DatabaseError> {
         let manager = PostgresConnectionManager::new_from_stringlike(connection_string, NoTls).map_err(DatabaseError::ConnectionManagerError)?;
         let pool = Pool::builder()
-            .max_size(20)
+            .max_size(30)
             .min_idle(Some(10))
-            .connection_timeout(Duration::from_secs(30))
-            .idle_timeout(Some(Duration::from_secs(300)))
-            .max_lifetime(Some(Duration::from_secs(3600)))
+            .connection_timeout(Duration::from_secs(10))
+            .idle_timeout(Some(Duration::from_secs(60)))
+            .max_lifetime(Some(Duration::from_secs(1800)))
             .build(manager)
             .await
             .map_err(|e| DatabaseError::CreatePoolError(e.to_string()))?;
+
         Ok(Self { pool })
     }
 
