@@ -78,32 +78,34 @@ impl TtlHandler {
     }
 
     fn is_duplicate_packet(&self, identifier: &PacketIdentifier, frame: &[u8]) -> bool {
-        // 完全一致パケットを検出
         if let Some(state) = self.packet_history.get(identifier) {
-            let current_ttl = frame[22];
-
-            // 短時間での同一パケットの検出
-            if state.processed_count > 2 && state.first_seen.elapsed() < Duration::from_millis(300) {
-                info!(
-                    "短時間での同一パケット検出: src={}, dst={}, count={}",
-                    identifier.src_ip, identifier.dst_ip, state.processed_count
-                );
-                return true;
+            // レートベースのループ検出
+            let elapsed = state.first_seen.elapsed();
+            if elapsed < Duration::from_millis(200) {
+                // 時間窓を200msに拡大
+                if state.processed_count >= 2 {
+                    // 閾値を2回に調整
+                    info!(
+                        "レートベースでループを検出: src={}, dst={}, count={}, elapsed={:?}",
+                        identifier.src_ip, identifier.dst_ip, state.processed_count, elapsed
+                    );
+                    return true;
+                }
             }
 
-            // 同一パケットでのTTL値の不自然な変化を検出
+            // TTL値の不自然な変化を検出
             if !state.ttl_history.is_empty() {
+                let current_ttl = frame[22];
                 let last_ttl = state.ttl_history.last().unwrap();
                 if current_ttl > *last_ttl {
                     info!(
-                        "同一パケットでのTTL値の不自然な増加: src={}, dst={}, TTL: {} -> {}",
+                        "TTL値の不自然な増加: src={}, dst={}, TTL: {} -> {}",
                         identifier.src_ip, identifier.dst_ip, last_ttl, current_ttl
                     );
                     return true;
                 }
             }
         }
-
         false
     }
 
@@ -128,12 +130,16 @@ impl TtlHandler {
         let now = Instant::now();
         let entry = self.packet_history.entry(identifier).or_insert_with(|| PacketState {
             first_seen: now,
-            ttl_history: Vec::new(),
+            ttl_history: Vec::with_capacity(4), // 初期容量を指定
             processed_count: 0,
         });
 
-        entry.ttl_history.push(frame[22]);
+        // processed_countの更新を確実に行う
         entry.processed_count += 1;
+        entry.ttl_history.push(frame[22]);
+
+        // デバッグ情報の出力
+        info!("パケット履歴を更新: count={}, elapsed={:?}", entry.processed_count, entry.first_seen.elapsed());
     }
 
     fn maybe_cleanup(&mut self) {
