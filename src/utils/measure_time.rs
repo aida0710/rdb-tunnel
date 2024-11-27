@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::time::Instant;
 
-pub async fn measure_time_async<Fut>(process_name: &str, future: Fut) -> Fut::Output
+pub async fn measure_time_async<Fut>(process_name: &str, console_output: bool, future: Fut) -> Fut::Output
 where
     Fut: Future,
 {
@@ -22,7 +22,9 @@ where
         (nanos as f64 / 1_000_000_000.0, "s")
     };
 
-    log::info!("{} の処理時間: {:.6} {}", process_name, time_str, unit);
+    if console_output {
+        log::info!("{} の処理時間: {:.6} {}", process_name, time_str, unit);
+    }
 
     result
 }
