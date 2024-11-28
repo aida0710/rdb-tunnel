@@ -18,12 +18,12 @@ pub struct ArpControlSettings {
 impl Default for ArpControlSettings {
     fn default() -> Self {
         Self {
-            burst_window: Duration::from_millis(200),
-            max_burst: 12,
-            normal_window: Duration::from_millis(500),
-            max_normal: 24,
-            cleanup_threshold: 1500,
-            max_entries: 7500,
+            burst_window: Duration::from_millis(100),   // 100ミリ秒に短縮
+            max_burst: 8,                               // バーストを8パケットに制限
+            normal_window: Duration::from_millis(1000), // 1秒に延長
+            max_normal: 16,                             // 通常レートも16パケットに制限
+            cleanup_threshold: 1500,                    // 現状維持
+            max_entries: 7500,                          // 現状維持
         }
     }
 }
