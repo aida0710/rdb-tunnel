@@ -2,8 +2,3 @@
 .env
 .env.development
 .env.production
-
-Cargo.lock
-application.log
-resource
-.idea
