@@ -71,16 +71,6 @@ impl PacketAnalyzer {
             Err(e) => return e,
         };
 
-        // ARPパケットの制御
-        if ethernet_header.ether_type == EtherType::ARP {
-            if !self.arp_controller.should_process(src_ip, dst_ip).await {
-                info!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
-                return AnalyzeResult::Reject;
-            } else {
-                info!("ARP通過: src={}, dst={}", src_ip, dst_ip);
-            }
-        }
-
         // Firewallチェック
         let firewall_packet = FirewallPacket::from_packet(
             ethernet_header.src_mac.clone(),
@@ -94,6 +84,16 @@ impl PacketAnalyzer {
         );
         if !FIREWALL.check(&firewall_packet) {
             return AnalyzeResult::Reject;
+        }
+
+        // ARPパケットの制御
+        if ethernet_header.ether_type == EtherType::ARP {
+            if !self.arp_controller.should_process(src_ip, dst_ip).await {
+                info!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
+                return AnalyzeResult::Reject;
+            } else {
+                info!("ARP通過: src={}, dst={}", src_ip, dst_ip);
+            }
         }
 
         // 重複チェック（ARPパケット以外）
