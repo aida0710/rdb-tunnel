@@ -10,4 +10,7 @@ pub enum PacketReaderError {
 
     #[error("パケット送信エラー: {0}")]
     SendError(String),
+
+    #[error("設定エラー: {0}")]
+    ConfigurationError(String),
 }

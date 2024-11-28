@@ -1,3 +1,4 @@
+use crate::config::AppConfig;
 use crate::packet::reader::error::PacketReaderError;
 use crate::packet::reader::packet_sender::PacketSender;
 use crate::packet::repository::PacketRepository;
@@ -11,8 +12,10 @@ pub struct PacketReader {}
 
 impl PacketReader {
     pub async fn start(interface: NetworkInterface) -> Result<(), PacketReaderError> {
+        let config: AppConfig = AppConfig::new().map_err(|e| PacketReaderError::ConfigurationError(e.to_string()))?;
+
         loop {
-            match PacketRepository::get_filtered_packets(false, None).await {
+            match PacketRepository::get_filtered_packets(config.node_id, false, None).await {
                 Ok(packets) => {
                     let sends = packets.into_iter().map(|raw_packet| {
                         let interface_clone = interface.clone();

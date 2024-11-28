@@ -32,6 +32,7 @@ pub struct LoggerConfig {
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    pub node_id: i16,
     pub database: DatabaseConfig,
     pub network: NetworkConfig,
     pub idps: IDPSConfig,
@@ -46,6 +47,10 @@ impl AppConfig {
             |var_name: &str| -> Result<String, ConfigError> { dotenv::var(var_name).map_err(|e| ConfigError::EnvVarError(format!("{}: {}", var_name, e.to_string()))) };
 
         Ok(Self {
+            node_id: {
+                let value = get_env_var("NODE_ID")?.parse::<u16>().map_err(|e| ConfigError::EnvVarParseError(format!("NODE_ID: {}", e.to_string())))?;
+                i16::try_from(value).map_err(|_| ConfigError::EnvVarParseError("NODE_ID: value exceeds i16::MAX".to_string()))?
+            },
             database: DatabaseConfig {
                 host: get_env_var("TIMESCALE_DB_HOST")?,
                 port: get_env_var("TIMESCALE_DB_PORT")?.parse::<u16>().map_err(|e| ConfigError::EnvVarParseError(format!("TIMESCALE_DB_PORT: {}", e.to_string())))?,
