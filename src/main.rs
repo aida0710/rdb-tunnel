@@ -27,6 +27,8 @@ async fn main() -> Result<(), InitProcessError> {
     info!("loggerが正常にセットアップされました");
     idps_log!("idps logの表示が有効になっています");
 
+    info!("Node IDは{}に指定されています", config.node_id);
+
     // データベース接続
     Database::connect(
         &config.database.host,
@@ -37,6 +39,8 @@ async fn main() -> Result<(), InitProcessError> {
     )
     .await
     .map_err(|e| InitProcessError::DatabaseConnectionError(e.to_string()))?;
+
+    info!("データベースに接続できました: address:{}, port:{}", config.database.host, config.database.port);
 
     if config.network.use_tap_interface {
         // 仮想インターフェースのセットアップ
