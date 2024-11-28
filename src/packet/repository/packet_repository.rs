@@ -113,9 +113,9 @@ impl PacketRepository {
     pub async fn get_filtered_packets(is_first: bool, last_timestamp: Option<&DateTime<Utc>>) -> Result<Vec<Vec<u8>>, DatabaseError> {
         let db = Database::get_database();
         let query = if is_first {
-            "SELECT raw_packet FROM packets WHERE timestamp >= NOW() - INTERVAL '4 seconds' ORDER BY timestamp ASC LIMIT 1000"
+            "SELECT raw_packet FROM packets WHERE timestamp >= NOW() - INTERVAL '4 seconds' ORDER BY timestamp DESC LIMIT 1000"
         } else {
-            "SELECT raw_packet FROM packets WHERE timestamp > $1 ORDER BY timestamp ASC LIMIT 1000"
+            "SELECT raw_packet FROM packets WHERE timestamp > $1 ORDER BY timestamp DESC LIMIT 1000"
         };
 
         let fallback_time = Utc::now() - chrono::Duration::seconds(5);
