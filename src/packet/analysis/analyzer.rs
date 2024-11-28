@@ -9,7 +9,7 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{debug, info};
+use log::debug;
 use std::net::{IpAddr, Ipv4Addr};
 use tokio::sync::Mutex;
 

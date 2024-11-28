@@ -1,5 +1,5 @@
 use crate::packet::analysis::AnalyzeResult;
-use log::{debug, info};
+use log::debug;
 use std::collections::HashSet;
 use std::net::IpAddr;
 use std::time::{Duration, Instant};
