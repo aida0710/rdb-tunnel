@@ -9,7 +9,7 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::debug;
+use log::{debug, info};
 use std::net::{IpAddr, Ipv4Addr};
 use tokio::sync::Mutex;
 
@@ -74,8 +74,10 @@ impl PacketAnalyzer {
         // ARPパケットの制御
         if ethernet_header.ether_type == EtherType::ARP {
             if !self.arp_controller.should_process(src_ip, dst_ip).await {
-                debug!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
+                info!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
                 return AnalyzeResult::Reject;
+            } else {
+                info!("ARP通過: src={}, dst={}", src_ip, dst_ip);
             }
         }
 
