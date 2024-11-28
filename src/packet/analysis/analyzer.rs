@@ -146,6 +146,10 @@ impl PacketAnalyzer {
                         src_port = transport_header.src_port;
                         dst_port = transport_header.dst_port;
                     }
+
+                    if src_port != 0 || dst_port != 0 {
+                        return Err(AnalyzeResult::Reject);
+                    }
                 },
                 Err(_e) => {
                     idps_log!("IPヘッダーの解析に失敗しました: タイプ={:?}", ether_type);
