@@ -1,5 +1,4 @@
 use crate::config::error::ConfigError;
-use crate::config::idps::{DetectionRules, FTPViolation, FragmentViolation, ICMPViolation, IDPSConfig, IPHeaderViolation, IPOptionViolation, TCPViolation, UDPViolation};
 use dotenv::dotenv;
 
 #[derive(Debug, Clone)]
@@ -35,7 +34,6 @@ pub struct AppConfig {
     pub node_id: i16,
     pub database: DatabaseConfig,
     pub network: NetworkConfig,
-    pub idps: IDPSConfig,
     pub logger_config: LoggerConfig,
 }
 
@@ -65,45 +63,6 @@ impl AppConfig {
                 tap_interface_name: get_env_var("TAP_INTERFACE_NAME")?,
                 docker_mode: dotenv::var("DOCKER_MODE").map(|v| v.to_lowercase() == "true").unwrap_or(false),
                 docker_interface_name: get_env_var("DOCKER_INTERFACE_NAME")?,
-            },
-            idps: IDPSConfig {
-                enabled: dotenv::var("IDS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
-                rules: DetectionRules {
-                    ip_header: vec![
-                        IPHeaderViolation::UnknownProtocol,
-                        IPHeaderViolation::LandAttack,
-                        IPHeaderViolation::ShortHeader,
-                        IPHeaderViolation::MalformedPacket,
-                    ],
-                    ip_option: vec![
-                        IPOptionViolation::MalformedOption,
-                        IPOptionViolation::SecurityOption,
-                        IPOptionViolation::LooseRouting,
-                        IPOptionViolation::RecordRoute,
-                        IPOptionViolation::StreamId,
-                        IPOptionViolation::StrictRouting,
-                        IPOptionViolation::Timestamp,
-                    ],
-                    fragment: vec![
-                        FragmentViolation::LargeOffset,
-                        FragmentViolation::SameOffset,
-                        FragmentViolation::InvalidFragment,
-                    ],
-                    icmp: vec![
-                        ICMPViolation::SourceQuench,
-                        ICMPViolation::TimestampRequest,
-                        ICMPViolation::TimestampReply,
-                        ICMPViolation::InfoRequest,
-                        ICMPViolation::InfoReply,
-                        ICMPViolation::MaskRequest,
-                        ICMPViolation::MaskReply,
-                        ICMPViolation::TooLarge,
-                    ],
-                    udp: vec![UDPViolation::ShortHeader, UDPViolation::Bomb],
-                    tcp: vec![TCPViolation::NoBitsSet, TCPViolation::SynAndFin, TCPViolation::FinNoAck],
-                    ftp: vec![FTPViolation::ImproperPort],
-                },
-                block_violations: dotenv::var("IPS_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(false),
             },
             logger_config: LoggerConfig {
                 normal_logger_file: get_env_var("NORMAL_LOGGER_FILE")?,
