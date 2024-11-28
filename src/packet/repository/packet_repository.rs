@@ -19,20 +19,6 @@ impl PacketRepository {
 
         debug!("バルク挿入開始: パケット数={}, node_id={}", packets.len(), node_id);
 
-        // パケットの内容をログ出力
-        for (i, packet) in packets.iter().enumerate() {
-            debug!(
-                "パケット[{}]: timestamp={}, src_mac={}, dst_mac={}, src_ip={}, dst_ip={}, raw_packet_size={}",
-                i,
-                packet.timestamp,
-                packet.src_mac,
-                packet.dst_mac,
-                packet.src_ip.0,
-                packet.dst_ip.0,
-                packet.raw_packet.len()
-            );
-        }
-
         let start_time = Instant::now();
         let packets = std::sync::Arc::new(packets);
 
@@ -78,63 +64,17 @@ impl PacketRepository {
 
         db.transaction(|tx| {
             Box::pin(async move {
-                debug!("トランザクション開始: パケット数={}", packets.len());
-
-                // パケットの挿入
-                let insert_packets_query = "
-                    INSERT INTO packets (node_id, timestamp, raw_packet)
-                    SELECT d.node_id, d.ts, d.raw_packet
+                let insert_query = "
+                    INSERT INTO packets (
+                        node_id, timestamp, src_mac, dst_mac, ether_type,
+                        src_ip, dst_ip, src_port, dst_port, ip_protocol,
+                        data, raw_packet
+                    )
+                    SELECT *
                     FROM (
                         SELECT
                             unnest($1::SMALLINT[]) as node_id,
-                            unnest($2::TIMESTAMPTZ[]) as ts,
-                            unnest($3::BYTEA[]) as raw_packet
-                    ) d
-                    RETURNING id, timestamp, raw_packet";
-
-                let node_ids: Vec<i16> = vec![node_id; packets.len()];
-                let timestamps: Vec<DateTime<Utc>> = packets.iter().map(|p| p.timestamp).collect();
-                let raw_packets: Vec<Vec<u8>> = packets.iter().map(|p| p.raw_packet.clone()).collect();
-
-                debug!("パケット挿入クエリ実行: node_ids={:?}, timestamps={:?}", node_ids, timestamps);
-
-                let packet_rows = tx.query(insert_packets_query, &[&node_ids, &timestamps, &raw_packets]).await.map_err(|e| {
-                    warn!("パケットの挿入中にエラーが発生: {:?}", e);
-                    DatabaseError::QueryExecutionError(e.to_string())
-                })?;
-
-                debug!("パケット挿入結果: 行数={}, 実行時間={}ms", packet_rows.len(), start_time.elapsed().as_millis());
-
-                for (i, row) in packet_rows.iter().enumerate() {
-                    let id: i64 = row.get(0);
-                    let ts: DateTime<Utc> = row.get(1);
-                    debug!("挿入されたパケット[{}]: id={}, timestamp={}", i, id, ts);
-                }
-
-                // パケット詳細の挿入
-                let details_query = "
-                    INSERT INTO packet_details
-                        (packet_id, timestamp, src_mac, dst_mac, ether_type,
-                         src_ip, dst_ip, src_port, dst_port, ip_protocol, data)
-                    SELECT
-                        p.id,
-                        p.timestamp,
-                        d.src_mac,
-                        d.dst_mac,
-                        d.ether_type,
-                        d.src_ip,
-                        d.dst_ip,
-                        d.src_port,
-                        d.dst_port,
-                        d.ip_protocol,
-                        d.data
-                    FROM (
-                        SELECT
-                            unnest($1::BIGINT[]) as id,
-                            unnest($2::TIMESTAMPTZ[]) as timestamp
-                    ) p
-                    CROSS JOIN LATERAL (
-                        SELECT
+                            unnest($2::TIMESTAMPTZ[]) as timestamp,
                             unnest($3::macaddr[]) as src_mac,
                             unnest($4::macaddr[]) as dst_mac,
                             unnest($5::INTEGER[]) as ether_type,
@@ -143,15 +83,12 @@ impl PacketRepository {
                             unnest($8::INTEGER[]) as src_port,
                             unnest($9::INTEGER[]) as dst_port,
                             unnest($10::INTEGER[]) as ip_protocol,
-                            unnest($11::BYTEA[]) as data
-                        LIMIT 1
-                    ) d";
+                            unnest($11::BYTEA[]) as data,
+                            unnest($12::BYTEA[]) as raw_packet
+                    ) t";
 
-                let packet_ids: Vec<i64> = packet_rows.iter().map(|r| r.get(0)).collect();
-                let packet_timestamps: Vec<DateTime<Utc>> = packet_rows.iter().map(|r| r.get(1)).collect();
-
-                debug!("詳細データ準備: packet_ids={:?}", packet_ids);
-
+                let node_ids: Vec<i16> = vec![node_id; packets.len()];
+                let timestamps: Vec<DateTime<Utc>> = packets.iter().map(|p| p.timestamp).collect();
                 let src_macs: Vec<MacAddr> = packets.iter().map(|p| p.src_mac.clone()).collect();
                 let dst_macs: Vec<MacAddr> = packets.iter().map(|p| p.dst_mac.clone()).collect();
                 let ether_types: Vec<i32> = packets.iter().map(|p| p.ether_type.as_i32()).collect();
@@ -161,13 +98,16 @@ impl PacketRepository {
                 let dst_ports: Vec<i32> = packets.iter().map(|p| p.dst_port).collect();
                 let ip_protocols: Vec<i32> = packets.iter().map(|p| p.ip_protocol.as_i32()).collect();
                 let datas: Vec<Vec<u8>> = packets.iter().map(|p| p.data.clone()).collect();
+                let raw_packets: Vec<Vec<u8>> = packets.iter().map(|p| p.raw_packet.clone()).collect();
 
-                let details_result = tx
+                debug!("データ挿入開始: パケット数={}, 最初のタイムスタンプ={:?}", packets.len(), timestamps.first());
+
+                let result = tx
                     .execute(
-                        details_query,
+                        insert_query,
                         &[
-                            &packet_ids,
-                            &packet_timestamps,
+                            &node_ids,
+                            &timestamps,
                             &src_macs,
                             &dst_macs,
                             &ether_types,
@@ -177,28 +117,22 @@ impl PacketRepository {
                             &dst_ports,
                             &ip_protocols,
                             &datas,
+                            &raw_packets,
                         ],
                     )
                     .await
                     .map_err(|e| {
-                        warn!("詳細データの挿入中にエラーが発生: {:?}", e);
+                        warn!("データ挿入中にエラーが発生: {:?}", e);
                         DatabaseError::QueryExecutionError(e.to_string())
                     })?;
 
-                debug!("詳細データ挿入結果: 行数={}, 実行時間={}ms", details_result, start_time.elapsed().as_millis());
+                debug!("データ挿入完了: 挿入数={}, 実行時間={}ms", result, start_time.elapsed().as_millis());
 
-                if details_result as usize != packets.len() {
-                    warn!(
-                        "期待された挿入数と実際の挿入数が一致しません: expected={}, actual={}, packet_ids={:?}, timestamps={:?}",
-                        packets.len(),
-                        details_result,
-                        packet_ids,
-                        packet_timestamps
-                    );
+                if result as usize != packets.len() {
+                    warn!("期待された挿入数と実際の挿入数が一致しません: expected={}, actual={}", packets.len(), result);
                     return Err(DatabaseError::QueryExecutionError("Inserted row count mismatch".to_string()));
                 }
 
-                debug!("トランザクション完了: 合計実行時間={}ms", start_time.elapsed().as_millis());
                 Ok(())
             })
         })
