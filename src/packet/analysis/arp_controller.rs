@@ -18,10 +18,10 @@ pub struct ArpControlSettings {
 impl Default for ArpControlSettings {
     fn default() -> Self {
         Self {
-            burst_window: Duration::from_secs(1),   // 1秒
-            max_burst: 10,                          // 10パケット
-            normal_window: Duration::from_secs(10), // 10秒
-            max_normal: 30,                         // 30パケット
+            burst_window: Duration::from_millis(200),
+            max_burst: 12,
+            normal_window: Duration::from_millis(500),
+            max_normal: 24,
             cleanup_threshold: 1500,
             max_entries: 7500,
         }
