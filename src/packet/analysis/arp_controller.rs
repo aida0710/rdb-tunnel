@@ -63,7 +63,7 @@ impl ArpController {
 
         // キャパシティ制御
         if inner.normal_count.len() >= settings.max_entries {
-            info!("ARPエントリ数が最大値を超えました");
+            debug!("ARPエントリ数が最大値を超えました");
             return false;
         }
 

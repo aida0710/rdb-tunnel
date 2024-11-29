@@ -89,10 +89,7 @@ impl PacketAnalyzer {
         // ARPパケットの制御
         if ethernet_header.ether_type == EtherType::ARP {
             if !self.arp_controller.should_process(ethernet_header.src_mac.clone(), ethernet_header.dst_mac.clone()).await {
-                info!("ARP制御により破棄: src={}, dst={}", src_ip, dst_ip);
                 return AnalyzeResult::Reject;
-            } else {
-                info!("ARP通過: src={}, dst={}", src_ip, dst_ip);
             }
         }
 
