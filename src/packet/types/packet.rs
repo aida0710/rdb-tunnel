@@ -14,7 +14,6 @@ pub struct PacketData {
     pub dst_port: i32,
     pub ip_protocol: IpProtocol,
     pub timestamp: DateTime<Utc>,
-    pub data: Vec<u8>,
     pub raw_packet: Vec<u8>,
 }
 
@@ -29,6 +28,5 @@ pub struct Packet {
     pub dst_port: Option<i32>,
     pub ip_protocol: i32,
     pub timestamp: DateTime<Utc>,
-    pub data: Vec<u8>,
     pub raw_packet: Vec<u8>,
 }

@@ -60,13 +60,13 @@ impl PacketAnalyzer {
         }
 
         // Ethernetヘッダーの解析
-        let (ethernet_header, _) = match parse_ethernet_header(ethernet_frame) {
+        let ethernet_header = match parse_ethernet_header(ethernet_frame) {
             Some(result) => result,
             None => return AnalyzeResult::Reject,
         };
 
         // IPパケットの解析
-        let (src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset) = match Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
+        let (src_ip, dst_ip, ip_protocol, src_port, dst_port) = match Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
             Ok(result) => result,
             Err(e) => return e,
         };
@@ -113,17 +113,15 @@ impl PacketAnalyzer {
             dst_port: dst_port as i32,
             ip_protocol,
             timestamp: Utc::now(),
-            data: ethernet_frame[payload_offset..].to_vec(),
             raw_packet: ethernet_frame.to_vec(),
         })
     }
 
-    async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16, usize), AnalyzeResult> {
+    async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16), AnalyzeResult> {
         let src_ip;
         let dst_ip;
         let mut src_port = 0u16;
         let mut dst_port = 0u16;
-        let mut payload_offset = 14usize;
         let mut ip_protocol = IpProtocol::UNKNOWN;
 
         // Ethernetヘッダー以降のデータを取得
@@ -135,7 +133,6 @@ impl PacketAnalyzer {
                     src_ip = ip_header.src_ip;
                     dst_ip = ip_header.dst_ip;
                     ip_protocol = ip_header.ip_protocol;
-                    payload_offset = 14 + ip_header.header_length;
 
                     if !ip_header.ip_protocol.is_icmp() {
                         return Err(AnalyzeResult::Reject);
@@ -175,6 +172,6 @@ impl PacketAnalyzer {
             },
         }
 
-        Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port, payload_offset))
+        Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port))
     }
 }
