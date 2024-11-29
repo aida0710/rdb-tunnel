@@ -66,9 +66,8 @@ impl PacketRepository {
             Box::pin(async move {
                 let insert_query = "
                     INSERT INTO packets (
-                        node_id, timestamp, src_mac, dst_mac, ether_type,
-                        src_ip, dst_ip, src_port, dst_port, ip_protocol,
-                        data, raw_packet
+                        node_id, timestamp, src_mac, dst_mac, ether_type, ip_protocol,
+                        src_ip, dst_ip, src_port, dst_port, raw_packet
                     )
                     SELECT *
                     FROM (
@@ -78,13 +77,12 @@ impl PacketRepository {
                             unnest($3::macaddr[]) as src_mac,
                             unnest($4::macaddr[]) as dst_mac,
                             unnest($5::INTEGER[]) as ether_type,
-                            unnest($6::inet[]) as src_ip,
-                            unnest($7::inet[]) as dst_ip,
-                            unnest($8::INTEGER[]) as src_port,
-                            unnest($9::INTEGER[]) as dst_port,
-                            unnest($10::INTEGER[]) as ip_protocol,
-                            unnest($11::BYTEA[]) as data,
-                            unnest($12::BYTEA[]) as raw_packet
+                            unnest($6::INTEGER[]) as ip_protocol,
+                            unnest($7::inet[]) as src_ip,
+                            unnest($8::inet[]) as dst_ip,
+                            unnest($9::INTEGER[]) as src_port,
+                            unnest($10::INTEGER[]) as dst_port,
+                            unnest($11::BYTEA[]) as raw_packet
                     ) t";
 
                 let node_ids: Vec<i16> = vec![node_id; packets.len()];
@@ -92,12 +90,11 @@ impl PacketRepository {
                 let src_macs: Vec<MacAddr> = packets.iter().map(|p| p.src_mac.clone()).collect();
                 let dst_macs: Vec<MacAddr> = packets.iter().map(|p| p.dst_mac.clone()).collect();
                 let ether_types: Vec<i32> = packets.iter().map(|p| p.ether_type.as_i32()).collect();
+                let ip_protocols: Vec<i32> = packets.iter().map(|p| p.ip_protocol.as_i32()).collect();
                 let src_ips: Vec<InetAddr> = packets.iter().map(|p| p.src_ip.clone()).collect();
                 let dst_ips: Vec<InetAddr> = packets.iter().map(|p| p.dst_ip.clone()).collect();
                 let src_ports: Vec<i32> = packets.iter().map(|p| p.src_port).collect();
                 let dst_ports: Vec<i32> = packets.iter().map(|p| p.dst_port).collect();
-                let ip_protocols: Vec<i32> = packets.iter().map(|p| p.ip_protocol.as_i32()).collect();
-                let datas: Vec<Vec<u8>> = packets.iter().map(|p| p.data.clone()).collect();
                 let raw_packets: Vec<Vec<u8>> = packets.iter().map(|p| p.raw_packet.clone()).collect();
 
                 debug!("データ挿入開始: パケット数={}, 最初のタイムスタンプ={:?}", packets.len(), timestamps.first());
@@ -111,12 +108,11 @@ impl PacketRepository {
                             &src_macs,
                             &dst_macs,
                             &ether_types,
+                            &ip_protocols,
                             &src_ips,
                             &dst_ips,
                             &src_ports,
                             &dst_ports,
-                            &ip_protocols,
-                            &datas,
                             &raw_packets,
                         ],
                     )
