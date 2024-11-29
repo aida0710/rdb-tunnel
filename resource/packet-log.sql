@@ -28,3 +28,6 @@ ALTER TABLE packets SET (timescaledb.compress, timescaledb.compress_segmentby = 
 
 -- 自動圧縮ポリシーの設定（オプション）
 SELECT add_compression_policy('packets', INTERVAL '7 days');
+
+-- 最後にtimestampのみのインデックスを削除
+DROP INDEX IF EXISTS packets_timestamp_idx;
