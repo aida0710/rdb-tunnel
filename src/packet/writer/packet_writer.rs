@@ -10,15 +10,11 @@ const FLUSH_INTERVAL: Duration = Duration::from_millis(50);
 
 pub struct PacketWriter {
     buffer: PacketBuffer,
-    analyzer: PacketAnalyzer,
 }
 
 impl Default for PacketWriter {
     fn default() -> Self {
-        Self {
-            buffer: PacketBuffer::default(),
-            analyzer: PacketAnalyzer::new(),
-        }
+        Self { buffer: PacketBuffer::default() }
     }
 }
 
@@ -55,7 +51,7 @@ impl PacketWriter {
     }
 
     pub async fn process_packet(&self, ethernet_frame: &[u8]) -> Result<(), WriterError> {
-        match self.analyzer.analyze_packet(ethernet_frame).await {
+        match PacketAnalyzer::analyze_packet(ethernet_frame).await {
             AnalyzeResult::Accept(packet_data) => {
                 self.buffer.push(packet_data).await;
                 Ok(())

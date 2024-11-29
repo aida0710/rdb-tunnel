@@ -1,5 +1,5 @@
 use crate::idps_log;
-use crate::packet::analysis::arp_controller::ArpController;
+use crate::packet::analysis::arp::parse_arp_packet;
 use crate::packet::analysis::duplicate_checker::DuplicateChecker;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
@@ -9,7 +9,8 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::info;
+use log::{debug, info};
+use pnet::packet::arp::ArpPacket;
 use std::net::{IpAddr, Ipv4Addr};
 use tokio::sync::Mutex;
 
@@ -41,18 +42,10 @@ lazy_static! {
     static ref DUPLICATE_CHECKER: Mutex<DuplicateChecker> = Mutex::new(DuplicateChecker::new());
 }
 
-pub struct PacketAnalyzer {
-    arp_controller: ArpController,
-}
+pub struct PacketAnalyzer {}
 
 impl PacketAnalyzer {
-    pub fn new() -> Self {
-        Self {
-            arp_controller: ArpController::new(),
-        }
-    }
-
-    pub async fn analyze_packet(&self, ethernet_frame: &[u8]) -> AnalyzeResult {
+    pub async fn analyze_packet(ethernet_frame: &[u8]) -> AnalyzeResult {
         // 基本的な長さチェック
         if ethernet_frame.len() < 14 + 20 {
             idps_log!("パケットが短すぎます: パケット長={}、期待値={}", ethernet_frame.len(), 14 + 20);
