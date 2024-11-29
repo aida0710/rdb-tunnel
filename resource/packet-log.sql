@@ -7,11 +7,11 @@ CREATE TABLE IF NOT EXISTS packets
     src_mac     MACADDR     NOT NULL,
     dst_mac     MACADDR     NOT NULL,
     ether_type  INTEGER     NOT NULL,
+    ip_protocol INTEGER     NOT NULL,
     src_ip      INET        NOT NULL,
     dst_ip      INET        NOT NULL,
     src_port    INTEGER     NOT NULL,
     dst_port    INTEGER     NOT NULL,
-    ip_protocol INTEGER     NOT NULL,
     raw_packet  BYTEA       NOT NULL,
     CONSTRAINT packets_pkey PRIMARY KEY (id, timestamp)
 );
