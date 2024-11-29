@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS packets
     src_port    INTEGER     NOT NULL,
     dst_port    INTEGER     NOT NULL,
     ip_protocol INTEGER     NOT NULL,
-    data        BYTEA       NOT NULL,
     raw_packet  BYTEA       NOT NULL,
     CONSTRAINT packets_pkey PRIMARY KEY (id, timestamp)
 );
