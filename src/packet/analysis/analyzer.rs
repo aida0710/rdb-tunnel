@@ -82,20 +82,18 @@ impl PacketAnalyzer {
         // ARPパケット
         if ethernet_header.ether_type == EtherType::ARP {
             return match parse_arp_packet(ethernet_frame).await {
-                Ok(Some(marked_frame)) => {
-                    AnalyzeResult::Accept(PacketData {
-                        src_mac: ethernet_header.src_mac,
-                        dst_mac: ethernet_header.dst_mac,
-                        ether_type: ethernet_header.ether_type,
-                        src_ip: InetAddr(src_ip),
-                        dst_ip: InetAddr(dst_ip),
-                        src_port: 0,                      // ARPはポート番号を持たない
-                        dst_port: 0,                      // ARPはポート番号を持たない
-                        ip_protocol: IpProtocol::UNKNOWN, // ARPはIPプロトコルを持たない
-                        timestamp: Utc::now(),
-                        raw_packet: marked_frame, // 編集されたフレームを使用
-                    })
-                },
+                Ok(Some(marked_frame)) => AnalyzeResult::Accept(PacketData {
+                    src_mac: ethernet_header.src_mac,
+                    dst_mac: ethernet_header.dst_mac,
+                    ether_type: ethernet_header.ether_type,
+                    src_ip: InetAddr(src_ip),
+                    dst_ip: InetAddr(dst_ip),
+                    src_port: 0,
+                    dst_port: 0,
+                    ip_protocol: IpProtocol::UNKNOWN,
+                    timestamp: Utc::now(),
+                    raw_packet: marked_frame,
+                }),
                 _ => AnalyzeResult::Reject,
             };
         }
