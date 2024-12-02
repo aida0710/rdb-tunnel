@@ -34,8 +34,6 @@ lazy_static! {
         fw.add_rule(Filter::SrcPort(5432), 90);
         fw.add_rule(Filter::DstPort(2233), 85);
         fw.add_rule(Filter::SrcPort(2233), 80);
-        fw.add_rule(Filter::DstPort(22), 75);
-        fw.add_rule(Filter::SrcPort(22), 70);
         fw
     };
     // TTLハンドラーをグローバルで保持し、状態を維持
