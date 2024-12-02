@@ -9,8 +9,6 @@ use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{debug, info};
-use pnet::packet::arp::ArpPacket;
 use std::net::{IpAddr, Ipv4Addr};
 use tokio::sync::Mutex;
 
@@ -79,7 +77,7 @@ impl PacketAnalyzer {
             return AnalyzeResult::Reject;
         }
 
-        // ARPパケット
+        /* // ARPパケット
         if ethernet_header.ether_type == EtherType::ARP {
             return match parse_arp_packet(ethernet_frame).await {
                 Ok(Some(marked_frame)) => AnalyzeResult::Accept(PacketData {
@@ -102,7 +100,7 @@ impl PacketAnalyzer {
         let mut checker = DUPLICATE_CHECKER.lock().await;
         if let Some(result) = checker.check_packet(ethernet_frame) {
             return result;
-        }
+        }*/
 
         // info!("通過パケット: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
 
