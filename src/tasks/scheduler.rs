@@ -4,7 +4,7 @@ use crate::packet::reader::PacketReader;
 use crate::packet::writer::PacketWriter;
 use crate::tasks::error::TaskError;
 use crate::tasks::task_monitor::TaskMonitor;
-use log::{info, warn};
+use log::info;
 use pnet::datalink::NetworkInterface;
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex, Semaphore};

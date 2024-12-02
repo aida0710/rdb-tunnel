@@ -1,7 +1,6 @@
 use crate::idps_log;
 use crate::packet::analysis::AnalyzeResult;
-use crate::packet::types::EtherType;
-use log::{error, info, trace};
+use log::{error, trace};
 
 // ARP固定値
 const ARP_HTYPE_ETHERNET: u16 = 1;

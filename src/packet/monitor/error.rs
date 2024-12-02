@@ -9,9 +9,6 @@ pub enum MonitorError {
     #[error("未対応のチャンネルタイプです")]
     UnsupportedChannelType,
 
-    #[error("パケット処理エラー: {0}")]
-    ProcessingError(String),
-
     // network monitor
     #[error("Mainインターフェイスでエラーが発生しました: {0}")]
     MainInterfaceError(String),

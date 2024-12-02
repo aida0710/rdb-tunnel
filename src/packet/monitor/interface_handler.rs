@@ -1,11 +1,9 @@
 use crate::packet::monitor::error::MonitorError;
 use crate::packet::writer::PacketWriter;
 use log::{error, info, trace};
-use nix::sys::socket::sockopt::SocketError;
 use nix::sys::socket::{self, AddressFamily, SockFlag, SockType, SockaddrLike, SockaddrStorage};
 use pnet::datalink::{self, Channel::Ethernet, Config, NetworkInterface};
 use std::os::fd::AsRawFd;
-use std::os::unix::io::RawFd;
 use std::time::Duration;
 
 const READ_BUFFER_SIZE: usize = 65536;
