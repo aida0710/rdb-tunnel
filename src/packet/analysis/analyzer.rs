@@ -79,7 +79,7 @@ impl PacketAnalyzer {
             return AnalyzeResult::Reject;
         }
 
-        if ethernet_header.ether_type == EtherType::ARP {
+        /*if ethernet_header.ether_type == EtherType::ARP {
             return match parse_arp_packet(ethernet_frame).await {
                 Ok(Some(marked_frame)) => AnalyzeResult::Accept(PacketData {
                     src_mac: ethernet_header.src_mac,
@@ -101,7 +101,7 @@ impl PacketAnalyzer {
         let mut checker = DUPLICATE_CHECKER.lock().await;
         if let Some(result) = checker.check_packet(ethernet_frame) {
             return result;
-        }
+        }*/
 
         // info!("通過パケット: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
 
