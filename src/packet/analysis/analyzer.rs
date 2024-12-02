@@ -27,13 +27,15 @@ pub enum AnalyzeResult {
 
 lazy_static! {
     static ref FIREWALL: IpFirewall = {
-        let mut fw = IpFirewall::new(Policy::Whitelist);
-        fw.add_rule(Filter::DstIpAddress("192.168.0.1".parse().unwrap()), 100);
-        fw.add_rule(Filter::SrcIpAddress("192.168.0.1".parse().unwrap()), 99);
-        fw.add_rule(Filter::DstIpAddress("192.168.0.30".parse().unwrap()), 98);
-        fw.add_rule(Filter::SrcIpAddress("192.168.0.30".parse().unwrap()), 97);
-        fw.add_rule(Filter::DstIpAddress("192.168.0.155".parse().unwrap()), 96);
-        fw.add_rule(Filter::SrcIpAddress("192.168.0.155".parse().unwrap()), 95);
+    let mut fw = IpFirewall::new(Policy::Blacklist);
+        fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
+        fw.add_rule(Filter::SrcIpAddress("160.251.175.134".parse().unwrap()), 99);
+        fw.add_rule(Filter::DstPort(5432), 95);
+        fw.add_rule(Filter::SrcPort(5432), 90);
+        fw.add_rule(Filter::DstPort(2233), 85);
+        fw.add_rule(Filter::SrcPort(2233), 80);
+        fw.add_rule(Filter::DstPort(22), 75);
+        fw.add_rule(Filter::SrcPort(22), 70);
         fw
     };
     // TTLハンドラーをグローバルで保持し、状態を維持
