@@ -99,11 +99,9 @@ impl PacketAnalyzer {
         }
 
         // 重複チェック（ARPパケット以外）
-        if ethernet_header.ether_type != EtherType::ARP {
-            let mut checker = DUPLICATE_CHECKER.lock().await;
-            if let Some(result) = checker.check_packet(ethernet_frame) {
-                return result;
-            }
+        let mut checker = DUPLICATE_CHECKER.lock().await;
+        if let Some(result) = checker.check_packet(ethernet_frame) {
+            return result;
         }
 
         // info!("通過パケット: src={}, dst={}, protocol={:?}", src_ip, dst_ip, ip_protocol);
