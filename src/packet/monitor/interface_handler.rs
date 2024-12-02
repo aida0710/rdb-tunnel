@@ -2,9 +2,11 @@ use crate::packet::monitor::error::MonitorError;
 use crate::packet::writer::PacketWriter;
 use log::{error, info};
 use pnet::datalink::{self, Channel::Ethernet, Config, NetworkInterface};
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc;
+
+const READ_BUFFER_SIZE: usize = 65536;
+const WRITE_BUFFER_SIZE: usize = 65536;
+const READ_TIMEOUT: Duration = Duration::from_secs(1);
 
 pub struct InterfaceHandler {
     interface: NetworkInterface,
@@ -17,9 +19,9 @@ impl InterfaceHandler {
 
     pub async fn start(&self) -> Result<(), MonitorError> {
         let config = Config {
-            write_buffer_size: 4096,
-            read_buffer_size: 4096,
-            read_timeout: Some(Duration::from_millis(100)),
+            write_buffer_size: WRITE_BUFFER_SIZE,
+            read_buffer_size: READ_BUFFER_SIZE,
+            read_timeout: Some(READ_TIMEOUT),
             write_timeout: None,
             channel_type: datalink::ChannelType::Layer2,
             bpf_fd_attempts: 1000,
@@ -35,64 +37,25 @@ impl InterfaceHandler {
         };
 
         info!("インターフェース {} でパケット受信を開始", self.interface.name);
-        let writer = Arc::new(PacketWriter::default());
+        let writer = PacketWriter::default();
 
-        // パケット処理用のチャネルを作成
-        let (packet_tx, mut packet_rx) = mpsc::channel::<Vec<u8>>(80000);
-
-        // パケット受信用のタスクを起動
-        let receive_handle = tokio::spawn(async move {
-            loop {
-                match rx.next() {
-                    Ok(ethernet_frame) => {
-                        if packet_tx.send(ethernet_frame.to_vec()).await.is_err() {
-                            break;
-                        }
-                    },
-                    Err(e) => {
-                        if e.to_string() == "Timed out" {
-                            // タイムアウトの場合は継続
-                            continue;
-                        }
-                        error!("パケット読み取りエラー: {}", e);
-                        break;
-                    },
-                }
-            }
-            Ok::<(), MonitorError>(())
-        });
-
-        // パケット処理用のタスクを起動
-        let process_handle = tokio::spawn({
-            let writer = Arc::clone(&writer);
-            async move {
-                while let Some(ethernet_data) = packet_rx.recv().await {
-                    let writer_clone = Arc::clone(&writer);
-
-                    let result = Self::process_packet(&writer_clone, &ethernet_data).await;
-
-                    match result {
-                        Ok(_) => log::debug!("パケット処理成功"),
-                        Err(e) => log::error!("パケット処理エラー: {:?}", e),
+        loop {
+            match rx.next() {
+                Ok(ethernet_frame) => {
+                    if let Err(e) = writer.process_packet(&ethernet_frame).await {
+                        error!("パケット処理エラー: {}", e);
                     }
-                }
-                Ok::<(), MonitorError>(())
+                },
+                Err(e) => {
+                    if e.to_string() == "Timed out" {
+                        continue;
+                    }
+                    error!("パケット読み取りエラー: {}", e);
+                    break;
+                },
             }
-        });
-
-        let (receive_result, process_result) = tokio::join!(receive_handle, process_handle);
-
-        match (receive_result, process_result) {
-            (Ok(Ok(())), Ok(Ok(()))) => Ok(()),
-            (Ok(Err(e)), _) | (_, Ok(Err(e))) => Err(e),
-            (Err(e), _) | (_, Err(e)) => Err(MonitorError::ProcessingError(e.to_string())),
         }
-    }
 
-    async fn process_packet(writer: &PacketWriter, ethernet_data: &[u8]) -> Result<(), MonitorError> {
-        writer.process_packet(ethernet_data).await.map_err(|e| {
-            error!("パケット処理中にエラーが発生しました: {}", e);
-            MonitorError::ProcessingError(e.to_string())
-        })
+        Ok(())
     }
 }
