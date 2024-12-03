@@ -17,9 +17,9 @@ pub struct IpHeader {
 pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16), AnalyzeResult> {
     let src_ip;
     let dst_ip;
-    let mut src_port = 0u16;
-    let mut dst_port = 0u16;
-    let mut ip_protocol = IpProtocol::UNKNOWN;
+    let mut src_port = 0;
+    let mut dst_port = 0;
+    let ip_protocol;
 
     // Ethernetヘッダー以降のデータを取得
     let ip_data = &ethernet_frame[14..];

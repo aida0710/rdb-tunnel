@@ -1,16 +1,11 @@
 use crate::idps_log;
-use crate::packet::analysis::arp::parse_arp_packet;
-use crate::packet::analysis::duplicate_checker::DuplicateChecker;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_packet;
-use crate::packet::analysis::transport::parse_transport_header;
-use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
-use std::net::{IpAddr, Ipv4Addr};
-use tokio::sync::Mutex;
+use std::net::IpAddr;
 
 #[derive(Clone, Copy)]
 pub struct IpHeader {
@@ -27,7 +22,7 @@ pub enum AnalyzeResult {
 
 lazy_static! {
     static ref FIREWALL: IpFirewall = {
-    let mut fw = IpFirewall::new(Policy::Blacklist);
+        let mut fw = IpFirewall::new(Policy::Blacklist);
         fw.add_rule(Filter::DstIpAddress("160.251.175.134".parse().unwrap()), 100);
         fw.add_rule(Filter::SrcIpAddress("160.251.175.134".parse().unwrap()), 99);
         fw.add_rule(Filter::DstPort(5432), 95);
@@ -36,8 +31,6 @@ lazy_static! {
         fw.add_rule(Filter::SrcPort(2233), 80);
         fw
     };
-    // TTLハンドラーをグローバルで保持し、状態を維持
-    static ref DUPLICATE_CHECKER: Mutex<DuplicateChecker> = Mutex::new(DuplicateChecker::new());
 }
 
 pub struct PacketAnalyzer {}

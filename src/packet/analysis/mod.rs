@@ -1,6 +1,4 @@
 mod analyzer;
-mod arp;
-mod duplicate_checker;
 mod ethernet;
 mod firewall;
 mod ip;
