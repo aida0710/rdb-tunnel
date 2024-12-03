@@ -1,6 +1,7 @@
 use crate::idps_log;
+use crate::packet::analysis::transport::parse_transport_header;
 use crate::packet::analysis::AnalyzeResult;
-use crate::packet::types::IpProtocol;
+use crate::packet::types::{EtherType, IpProtocol};
 use rtnetlink::IpVersion;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -13,7 +14,48 @@ pub struct IpHeader {
     pub header_length: usize,
 }
 
-pub async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeResult> {
+pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16), AnalyzeResult> {
+    let src_ip;
+    let dst_ip;
+    let mut src_port = 0u16;
+    let mut dst_port = 0u16;
+    let mut ip_protocol = IpProtocol::UNKNOWN;
+
+    // Ethernetヘッダー以降のデータを取得
+    let ip_data = &ethernet_frame[14..];
+
+    match ether_type {
+        EtherType::IP_V4 | EtherType::IP_V6 => match parse_ip_header(ip_data).await {
+            Ok(Some(ip_header)) => {
+                src_ip = ip_header.src_ip;
+                dst_ip = ip_header.dst_ip;
+                ip_protocol = ip_header.ip_protocol;
+
+                if let Some((transport_header, _)) = parse_transport_header(ip_data) {
+                    src_port = transport_header.src_port;
+                    dst_port = transport_header.dst_port;
+                }
+            },
+            Err(_e) => {
+                idps_log!("IPヘッダーの解析に失敗しました: タイプ={:?}", ether_type);
+                return Err(AnalyzeResult::Reject);
+            },
+            _ => {
+                idps_log!("IPヘッダーが見つかりませんでした");
+                return Err(AnalyzeResult::Reject);
+            },
+        },
+        _ => {
+            src_ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
+            dst_ip = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
+            ip_protocol = IpProtocol::UNKNOWN;
+        },
+    }
+
+    Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port))
+}
+
+async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeResult> {
     let version = (data[0] >> 4) & 0xF;
     match version {
         4 => {

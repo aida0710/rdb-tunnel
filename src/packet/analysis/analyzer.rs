@@ -3,7 +3,7 @@ use crate::packet::analysis::arp::parse_arp_packet;
 use crate::packet::analysis::duplicate_checker::DuplicateChecker;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
-use crate::packet::analysis::ip::parse_ip_header;
+use crate::packet::analysis::ip::parse_ip_packet;
 use crate::packet::analysis::transport::parse_transport_header;
 use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
@@ -57,7 +57,7 @@ impl PacketAnalyzer {
         };
 
         // IPパケットの解析
-        let (src_ip, dst_ip, ip_protocol, src_port, dst_port) = match Self::parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
+        let (src_ip, dst_ip, ip_protocol, src_port, dst_port) = match parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
             Ok(result) => result,
             Err(e) => return e,
         };
@@ -89,55 +89,5 @@ impl PacketAnalyzer {
             timestamp: Utc::now(),
             raw_packet: ethernet_frame.to_vec(),
         })
-    }
-
-    async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16), AnalyzeResult> {
-        let src_ip;
-        let dst_ip;
-        let mut src_port = 0u16;
-        let mut dst_port = 0u16;
-        let mut ip_protocol = IpProtocol::UNKNOWN;
-
-        // Ethernetヘッダー以降のデータを取得
-        let ip_data = &ethernet_frame[14..];
-
-        match ether_type {
-            EtherType::IP_V4 | EtherType::IP_V6 => match parse_ip_header(ip_data).await {
-                Ok(Some(ip_header)) => {
-                    src_ip = ip_header.src_ip;
-                    dst_ip = ip_header.dst_ip;
-                    ip_protocol = ip_header.ip_protocol;
-
-                    if let Some((transport_header, _)) = parse_transport_header(ip_data) {
-                        src_port = transport_header.src_port;
-                        dst_port = transport_header.dst_port;
-                    }
-                },
-                Err(_e) => {
-                    idps_log!("IPヘッダーの解析に失敗しました: タイプ={:?}", ether_type);
-                    return Err(AnalyzeResult::Reject);
-                },
-                _ => {
-                    idps_log!("IPヘッダーが見つかりませんでした");
-                    return Err(AnalyzeResult::Reject);
-                },
-            },
-            EtherType::ARP => {
-                if ethernet_frame.len() >= 42 {
-                    // ARPパケットの最小長
-                    src_ip = IpAddr::V4(Ipv4Addr::new(ethernet_frame[28], ethernet_frame[29], ethernet_frame[30], ethernet_frame[31]));
-                    dst_ip = IpAddr::V4(Ipv4Addr::new(ethernet_frame[38], ethernet_frame[39], ethernet_frame[40], ethernet_frame[41]));
-                } else {
-                    idps_log!("ARPパケットが短すぎます: パケット長={}、期待値=42", ethernet_frame.len());
-                    return Err(AnalyzeResult::Reject);
-                }
-            },
-            _ => {
-                // arpとicmp以外をすべて排除
-                return Err(AnalyzeResult::Reject);
-            },
-        }
-
-        Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port))
     }
 }
