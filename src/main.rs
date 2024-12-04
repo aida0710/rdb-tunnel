@@ -10,11 +10,10 @@ mod utils;
 use crate::config::AppConfig;
 use crate::database::Database;
 use crate::error::InitProcessError;
-use crate::interface::{select_interface, setup_interface};
+use crate::interface::select_interface;
 use crate::logger::setup_logger::setup_logger;
 use crate::tasks::TaskScheduler;
 use log::{error, info};
-use tun_tap::{Iface, Mode};
 
 #[tokio::main]
 async fn main() -> Result<(), InitProcessError> {
@@ -41,16 +40,6 @@ async fn main() -> Result<(), InitProcessError> {
     .map_err(|e| InitProcessError::DatabaseConnectionError(e.to_string()))?;
 
     info!("データベースに接続できました: address:{}, port:{}", config.database.host, config.database.port);
-
-    if config.network.use_tap_interface {
-        // 仮想インターフェースのセットアップ
-        let virtual_interface = Iface::new(&config.network.tap_interface_name, Mode::Tap).map_err(|e| InitProcessError::VirtualInterfaceCreateError(e.to_string()))?;
-        info!("仮想NICの作成に成功しました: {}", virtual_interface.name());
-
-        setup_interface(&config.network.tap_interface_name, &format!("{}/{}", config.network.tap_ip, config.network.tap_mask))
-            .await
-            .map_err(|e| InitProcessError::VirtualInterfaceSetupError(e.to_string()))?;
-    }
 
     // ネットワークインターフェースの選択
     let interface = select_interface(config.network.docker_mode, &config.network.docker_interface_name).map_err(|e| InitProcessError::InterfaceSelectionError(e.to_string()))?;

@@ -8,12 +8,6 @@ pub enum InitProcessError {
     #[error("設定エラー: {0}")]
     ConfigurationError(String),
 
-    #[error("仮想インターフェイスの作成に失敗しました: {0}")]
-    VirtualInterfaceCreateError(String),
-
-    #[error("仮想インターフェイスのセットアップに失敗しました: {0}")]
-    VirtualInterfaceSetupError(String),
-
     #[error("インターフェイスの選択に失敗しました: {0}")]
     InterfaceSelectionError(String),
 
