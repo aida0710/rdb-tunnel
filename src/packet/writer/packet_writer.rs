@@ -6,7 +6,7 @@ use crate::packet::writer::PacketBuffer;
 use log::{error, info, trace};
 use tokio::time::{interval, Duration};
 
-const FLUSH_INTERVAL: Duration = Duration::from_millis(50);
+const FLUSH_INTERVAL: Duration = Duration::from_millis(5);
 
 pub struct PacketWriter {
     buffer: PacketBuffer,
