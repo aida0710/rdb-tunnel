@@ -10,7 +10,7 @@ pub struct EthernetHeader {
 
 pub fn parse_ethernet_header(frame: &[u8]) -> Option<EthernetHeader> {
     if frame.len() < 14 {
-        idps_log!("Ethernet header too short");
+        idps_log!("ethernet headerが短すぎます");
         return None;
     }
 
