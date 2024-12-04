@@ -123,7 +123,7 @@ impl TaskScheduler {
             tokio::select! {
                 result = async {
                     info!("パケットの収集・解析タスクを起動しました");
-                    NetworkMonitor::start_monitoring(interface).await
+                    NetworkMonitor::start(interface).await
                 } => {
                     result.map_err(|e| e.to_string())
                 }
