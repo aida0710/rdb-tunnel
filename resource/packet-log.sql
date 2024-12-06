@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS packets
     CONSTRAINT packets_pkey PRIMARY KEY (id, timestamp)
 );
 
+CREATE TABLE processed_packets (
+    packet_id BIGINT,
+    node_id SMALLINT,
+    processed_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (packet_id, node_id)
+);
+
 -- ハイパーテーブルへの変換
 SELECT create_hypertable('packets', 'timestamp', chunk_time_interval => INTERVAL '1 hour');
 

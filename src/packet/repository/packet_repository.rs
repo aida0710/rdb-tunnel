@@ -139,12 +139,17 @@ impl PacketRepository {
         let db = Database::get_database();
         let query = if is_first {
             "SELECT raw_packet FROM packets
-             WHERE node_id != $1 AND timestamp >= NOW() - INTERVAL '4 seconds'
-             ORDER BY timestamp ASC LIMIT 1000"
+            WHERE node_id != $1 AND timestamp >= NOW() - INTERVAL '4 seconds'
+            ORDER BY timestamp ASC LIMIT 1000"
         } else {
-            "SELECT raw_packet FROM packets
-             WHERE node_id != $1 AND timestamp > $2
-             ORDER BY timestamp ASC LIMIT 1000"
+            "SELECT p.id, p.raw_packet
+            FROM packets p
+            LEFT JOIN processed_packets pp ON p.id = pp.packet_id AND pp.node_id = $1
+            WHERE p.node_id != $1
+                AND p.timestamp > $2
+                AND pp.packet_id IS NULL
+            ORDER BY p.timestamp ASC
+            LIMIT 1000"
         };
 
         let fallback_time = Utc::now() - chrono::Duration::seconds(5);
@@ -155,12 +160,17 @@ impl PacketRepository {
         };
 
         let rows = db.query(query, &params).await?;
-        debug!(
-            "フィルタされたパケットの取得: 行数={}, is_first={}, last_timestamp={:?}",
-            rows.len(),
-            is_first,
-            last_timestamp
-        );
+
+        // パケットIDを記録
+        if !is_first && !rows.is_empty() {
+            let insert_query = "
+            INSERT INTO processed_packets (packet_id, node_id)
+            VALUES (unnest($1::bigint[]), $2)
+        ";
+            let packet_ids: Vec<i64> = rows.iter().map(|row| row.get("id")).collect();
+            db.execute(insert_query, &[&packet_ids, &node_id]).await?;
+        }
+
         Ok(rows.into_iter().map(|row| row.get("raw_packet")).collect())
     }
 }
