@@ -74,8 +74,8 @@ impl PacketAnalyzer {
         info!(
             "Transport: {}:{} -> {}:{}, Flags: SYN={}, ACK={}, RST={}, FIN={}",
             src_ip,
-            dst_ip,
             src_port,
+            dst_ip,
             dst_port,
             flags & 0x02 != 0, // SYN
             flags & 0x10 != 0, // ACK
