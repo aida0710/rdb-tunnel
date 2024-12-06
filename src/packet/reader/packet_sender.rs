@@ -18,6 +18,12 @@ impl PacketSender {
                 )));
             }
 
+            log::info!(
+                "Sending packet: size={}, first_bytes={:?}",
+                raw_packet.len(),
+                raw_packet.iter().take(20).collect::<Vec<_>>()
+            );
+
             let mut tx = match datalink::channel(interface, Default::default()) {
                 Ok(Ethernet(tx, _)) => tx,
                 Ok(_) => return Err(PacketReaderError::UnsupportedChannelType),
