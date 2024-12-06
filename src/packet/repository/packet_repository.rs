@@ -17,11 +17,6 @@ impl PacketRepository {
             return Ok(());
         }
 
-        // 3未満の場合はinsertしない
-        if packets.len() < 3 {
-            return Ok(())
-        }
-
         debug!("バルク挿入開始: パケット数={}, node_id={}", packets.len(), node_id);
 
         let start_time = Instant::now();
