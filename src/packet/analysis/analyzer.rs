@@ -2,6 +2,7 @@ use crate::idps_log;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_packet;
+use crate::packet::types::{EtherType, IpProtocol};
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
@@ -72,6 +73,10 @@ impl PacketAnalyzer {
             dst_port,
         );
         if !FIREWALL.check(&firewall_packet) {
+            return AnalyzeResult::Reject;
+        }
+
+        if ethernet_header.ether_type == EtherType::IP_V6 {
             return AnalyzeResult::Reject;
         }
 
