@@ -5,6 +5,7 @@ use crate::packet::analysis::ip::parse_ip_packet;
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
+use log::info;
 use std::net::IpAddr;
 
 #[derive(Clone, Copy)]
@@ -50,7 +51,7 @@ impl PacketAnalyzer {
         };
 
         // IPパケットの解析
-        let (src_ip, dst_ip, ip_protocol, src_port, dst_port) = match parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
+        let (src_ip, dst_ip, ip_protocol, src_port, dst_port, flags) = match parse_ip_packet(ethernet_frame, ethernet_header.ether_type).await {
             Ok(result) => result,
             Err(e) => return e,
         };
@@ -69,6 +70,16 @@ impl PacketAnalyzer {
         if !FIREWALL.check(&firewall_packet) {
             return AnalyzeResult::Reject;
         }
+
+        info!(
+            "Transport: {} -> {}, Flags: SYN={}, ACK={}, RST={}, FIN={}",
+            src_port,
+            dst_port,
+            flags & 0x02 != 0, // SYN
+            flags & 0x10 != 0, // ACK
+            flags & 0x04 != 0, // RST
+            flags & 0x01 != 0  // FIN
+        );
 
         AnalyzeResult::Accept(PacketData {
             src_mac: ethernet_header.src_mac,

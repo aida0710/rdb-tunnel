@@ -14,11 +14,12 @@ pub struct IpHeader {
     pub header_length: usize,
 }
 
-pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16), AnalyzeResult> {
+pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Result<(IpAddr, IpAddr, IpProtocol, u16, u16, u8), AnalyzeResult> {
     let src_ip;
     let dst_ip;
     let mut src_port = 0;
     let mut dst_port = 0;
+    let mut flags = 0;
     let ip_protocol;
 
     // Ethernetヘッダー以降のデータを取得
@@ -34,6 +35,7 @@ pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Re
                 if let Some((transport_header, _)) = parse_transport_header(ip_data) {
                     src_port = transport_header.src_port;
                     dst_port = transport_header.dst_port;
+                    flags = transport_header.flags;
                 }
             },
             Err(_e) => {
@@ -52,7 +54,7 @@ pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Re
         },
     }
 
-    Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port))
+    Ok((src_ip, dst_ip, ip_protocol, src_port, dst_port, flags))
 }
 
 async fn parse_ip_header(data: &[u8]) -> Result<Option<IpHeader>, AnalyzeResult> {
