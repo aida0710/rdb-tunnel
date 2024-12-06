@@ -9,7 +9,7 @@ impl PacketSender {
     const MAX_PACKET_SIZE: usize = 1500;
 
     pub async fn send_packet(interface: &NetworkInterface, raw_packet: Vec<u8>) -> Result<(), PacketReaderError> {
-        measure_time_async("パケット送信", false, async {
+        measure_time_async("send packets", true, async {
             if raw_packet.len() > Self::MAX_PACKET_SIZE {
                 return Err(PacketReaderError::SendError(format!(
                     "パケットサイズが制限を超えています: {} bytes (最大: {} bytes)",
