@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, info};
 
 #[derive(Debug)]
 pub struct TransportHeader {
@@ -23,12 +23,22 @@ pub fn parse_transport_header(data: &[u8]) -> Option<(TransportHeader, &[u8])> {
         return None;
     }
 
+    let transport_flag = transport_data[12];
+
     let header = TransportHeader {
         src_port: u16::from_be_bytes([transport_data[0], transport_data[1]]),
         dst_port: u16::from_be_bytes([transport_data[2], transport_data[3]]),
     };
 
-    debug!("Transport: {} -> {}", header.src_port, header.dst_port);
+    info!(
+        "Transport: {} -> {}, Flags: SYN={}, ACK={}, RST={}, FIN={}",
+        header.src_port,
+        header.dst_port,
+        transport_flag & 0x02 != 0, // SYN
+        transport_flag & 0x10 != 0, // ACK
+        transport_flag & 0x04 != 0, // RST
+        transport_flag & 0x01 != 0  // FIN
+    );
 
     Some((header, &transport_data[4..]))
 }
