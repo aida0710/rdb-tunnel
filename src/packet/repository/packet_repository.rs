@@ -140,11 +140,11 @@ impl PacketRepository {
         let query = if is_first {
             "SELECT raw_packet FROM packets
              WHERE node_id != $1 AND timestamp >= NOW() - INTERVAL '4 seconds'
-             ORDER BY timestamp DESC LIMIT 1000"
+             ORDER BY timestamp ASC LIMIT 1000"
         } else {
             "SELECT raw_packet FROM packets
              WHERE node_id != $1 AND timestamp > $2
-             ORDER BY timestamp DESC LIMIT 1000"
+             ORDER BY timestamp ASC LIMIT 1000"
         };
 
         let fallback_time = Utc::now() - chrono::Duration::seconds(5);
