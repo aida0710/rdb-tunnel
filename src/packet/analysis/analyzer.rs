@@ -72,7 +72,9 @@ impl PacketAnalyzer {
         }
 
         info!(
-            "Transport: {} -> {}, Flags: SYN={}, ACK={}, RST={}, FIN={}",
+            "Transport: {}:{} -> {}:{}, Flags: SYN={}, ACK={}, RST={}, FIN={}",
+            src_ip,
+            dst_ip,
             src_port,
             dst_port,
             flags & 0x02 != 0, // SYN
