@@ -39,6 +39,8 @@ lazy_static! {
         fw.add_rule(Filter::SrcPort(19132), 70);
         fw.add_rule(Filter::DstPort(19133), 65);
         fw.add_rule(Filter::SrcPort(19133), 60);
+        fw.add_rule(Filter::DstPort(1900), 55);
+        fw.add_rule(Filter::SrcPort(1900), 50);
         fw
     };
 }
