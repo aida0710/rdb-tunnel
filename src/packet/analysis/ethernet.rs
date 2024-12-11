@@ -1,4 +1,5 @@
 use crate::idps_log;
+use crate::packet::analysis::AnalyzeResult;
 use crate::packet::types::{EtherType, MacAddr};
 
 #[derive(Debug)]
@@ -8,16 +9,16 @@ pub struct EthernetHeader {
     pub ether_type: EtherType,
 }
 
-pub fn parse_ethernet_header(frame: &[u8]) -> Option<EthernetHeader> {
+pub fn parse_ethernet_header(frame: &[u8]) -> Result<EthernetHeader, AnalyzeResult> {
     if frame.len() < 14 {
         idps_log!("ethernet headerが短すぎます");
-        return None;
+        return Err(AnalyzeResult::Reject);
     }
 
     let (src_mac, dst_mac) = extract_mac_addresses(frame);
     let ether_type = parse_ether_type(frame);
 
-    Some(EthernetHeader { src_mac, dst_mac, ether_type })
+    Ok(EthernetHeader { src_mac, dst_mac, ether_type })
 }
 
 fn extract_mac_addresses(frame: &[u8]) -> (MacAddr, MacAddr) {

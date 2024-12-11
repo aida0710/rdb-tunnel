@@ -2,7 +2,7 @@ use crate::idps_log;
 use crate::packet::analysis::ethernet::parse_ethernet_header;
 use crate::packet::analysis::firewall::{Filter, FirewallPacket, IpFirewall, Policy};
 use crate::packet::analysis::ip::parse_ip_packet;
-use crate::packet::types::{EtherType, IpProtocol};
+use crate::packet::types::EtherType;
 use crate::packet::{InetAddr, PacketData};
 use chrono::Utc;
 use lazy_static::lazy_static;
@@ -59,8 +59,8 @@ impl PacketAnalyzer {
 
         // Ethernetヘッダーの解析
         let ethernet_header = match parse_ethernet_header(ethernet_frame) {
-            Some(result) => result,
-            None => return AnalyzeResult::Reject,
+            Ok(result) => result,
+            Err(_) => return AnalyzeResult::Reject,
         };
 
         // IPパケットの解析

@@ -1,3 +1,6 @@
+use crate::idps_log;
+use crate::packet::analysis::AnalyzeResult;
+
 #[derive(Debug)]
 pub struct TransportHeader {
     pub src_port: u16,
@@ -5,10 +8,11 @@ pub struct TransportHeader {
     pub flags: u8,
 }
 
-pub fn parse_transport_header(data: &[u8]) -> Option<(TransportHeader, &[u8])> {
+pub fn parse_transport_header(data: &[u8]) -> Result<TransportHeader, AnalyzeResult> {
     // IPヘッダが必要なので、最低でもIPヘッダ長以上のデータが必要
     if data.len() < 20 {
-        return None;
+        idps_log!("IPヘッダが必要なので、最低でもIPヘッダ長以上のデータが必要の為、捨てられました");
+        return Err(AnalyzeResult::Reject);
     }
 
     // IPヘッダ長を取得
@@ -19,7 +23,8 @@ pub fn parse_transport_header(data: &[u8]) -> Option<(TransportHeader, &[u8])> {
 
     // トランスポートヘッダには少なくとも4バイト必要
     if transport_data.len() < 4 {
-        return None;
+        idps_log!("トランスポートヘッダが4byte未満の為、捨てられました");
+        return Err(AnalyzeResult::Reject);
     }
 
     let header = TransportHeader {
@@ -28,5 +33,5 @@ pub fn parse_transport_header(data: &[u8]) -> Option<(TransportHeader, &[u8])> {
         flags: transport_data[12],
     };
 
-    Some((header, &transport_data[4..]))
+    Ok(header)
 }

@@ -32,10 +32,13 @@ pub async fn parse_ip_packet(ethernet_frame: &[u8], ether_type: EtherType) -> Re
                 dst_ip = ip_header.dst_ip;
                 ip_protocol = ip_header.ip_protocol;
 
-                if let Some((transport_header, _)) = parse_transport_header(ip_data) {
-                    src_port = transport_header.src_port;
-                    dst_port = transport_header.dst_port;
-                    flags = transport_header.flags;
+                match parse_transport_header(ip_data) {
+                    Ok(transport_header) => {
+                        src_port = transport_header.src_port;
+                        dst_port = transport_header.dst_port;
+                        flags = transport_header.flags;
+                    },
+                    Err(_) => {},
                 }
             },
             Err(_e) => {
