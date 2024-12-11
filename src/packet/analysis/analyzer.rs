@@ -33,6 +33,8 @@ lazy_static! {
         fw.add_rule(Filter::SrcIpAddress("192.168.100.95".parse().unwrap()), 95);
         fw.add_rule(Filter::DstIpAddress("192.168.100.81".parse().unwrap()), 64);
         fw.add_rule(Filter::SrcIpAddress("192.168.100.81".parse().unwrap()), 63);
+        fw.add_rule(Filter::DstIpAddress("0.0.0.0".parse().unwrap()), 62);
+        fw.add_rule(Filter::SrcIpAddress("0.0.0.0".parse().unwrap()), 61);
         fw.add_rule(Filter::DstPort(5432), 95);
         fw.add_rule(Filter::SrcPort(5432), 90);
         fw.add_rule(Filter::DstPort(2233), 85);
