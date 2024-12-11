@@ -21,16 +21,16 @@ pub fn parse_transport_header(data: &[u8]) -> Result<TransportHeader, AnalyzeRes
     // トランスポートヘッダの開始位置を計算
     let transport_data = &data[ihl..];
 
-    // トランスポートヘッダには少なくとも4バイト必要
-    if transport_data.len() < 4 {
-        idps_log!("トランスポートヘッダが4byte未満の為、捨てられました");
+    // TCPヘッダには少なくとも14バイト必要（フラグまで読むため）
+    if transport_data.len() < 14 {
+        idps_log!("トランスポートヘッダが14byte未満の為、捨てられました");
         return Err(AnalyzeResult::Reject);
     }
 
     let header = TransportHeader {
         src_port: u16::from_be_bytes([transport_data[0], transport_data[1]]),
         dst_port: u16::from_be_bytes([transport_data[2], transport_data[3]]),
-        flags: transport_data[12],
+        flags: transport_data[13],
     };
 
     Ok(header)
